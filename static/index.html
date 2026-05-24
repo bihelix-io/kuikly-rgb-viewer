@@ -922,6 +922,10 @@
           width: 100%;
         }
 
+        .panel-switch {
+          width: 32px;
+        }
+
         .utxo {
           grid-template-columns: 1fr;
         }
@@ -1110,6 +1114,10 @@
         color: #0b0a0c;
         background: linear-gradient(90deg, #f58415 0%, #9f3acf 100%);
         flex: 0 0 auto;
+      }
+
+      .mobile-tabs {
+        display: none;
       }
 
       .panel-head {
@@ -1317,12 +1325,81 @@
         .workspace-grid.active-tokens,
         .workspace-grid.active-address,
         .workspace-grid.active-utxo {
-          grid-template-columns: 1fr;
+          display: flex;
+          grid-template-columns: none;
+          gap: 0;
+          overflow-x: auto;
+          overflow-y: hidden;
+          scroll-snap-type: x mandatory;
+          scroll-behavior: smooth;
+          scrollbar-width: none;
+          margin: 0 -12px;
+          padding: 0 12px 16px;
+        }
+
+        .workspace-grid::-webkit-scrollbar {
+          display: none;
         }
 
         .panel {
-          min-height: auto;
+          flex: 0 0 100%;
+          min-height: calc(100vh - 184px);
           opacity: 1;
+          scroll-snap-align: start;
+          scroll-snap-stop: always;
+          cursor: default;
+        }
+
+        .panel + .panel {
+          margin-left: 12px;
+        }
+
+        .panel.is-inactive {
+          opacity: 1;
+        }
+
+        .panel.is-inactive .panel-body {
+          max-height: none;
+          overflow: visible;
+          mask-image: none;
+        }
+
+        .panel.is-inactive .nav-button {
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .mobile-tabs {
+          position: sticky;
+          top: 0;
+          z-index: 8;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 6px;
+          margin: 0 0 12px;
+          padding: 6px;
+          border: 1px solid rgba(255, 255, 255, 0.13);
+          border-radius: 8px;
+          background: rgba(11, 10, 12, 0.76);
+          backdrop-filter: blur(14px);
+        }
+
+        .mobile-tab {
+          width: 100%;
+          height: 38px;
+          border: 1px solid transparent;
+          border-radius: 7px;
+          padding: 0 8px;
+          background: transparent;
+          color: rgba(255, 255, 255, 0.64);
+          font-size: 13px;
+          font-weight: 850;
+        }
+
+        .mobile-tab.is-active {
+          border-color: rgba(255, 141, 0, 0.45);
+          background: linear-gradient(90deg, #f58415 0%, #9f3acf 100%);
+          color: #0b0a0c;
         }
 
         .token-grid,
@@ -1364,6 +1441,12 @@
           <div class="status"><span id="healthDot" class="dot"></span><span id="healthText">连接中</span></div>
         </div>
       </header>
+
+      <nav class="mobile-tabs" aria-label="RGB 工作台栏目">
+        <button class="mobile-tab" type="button" data-activate="tokens">Token</button>
+        <button class="mobile-tab" type="button" data-activate="address">地址</button>
+        <button class="mobile-tab" type="button" data-activate="utxo">UTXO</button>
+      </nav>
 
       <div id="workspaceGrid" class="workspace-grid active-address">
         <section class="panel" data-panel="tokens" aria-labelledby="tokenPanelTitle">
@@ -1549,6 +1632,7 @@
       const walletProviderList = document.getElementById("walletProviderList");
       const workspaceGrid = document.getElementById("workspaceGrid");
       const panels = Array.from(document.querySelectorAll(".panel[data-panel]"));
+      const mobileTabs = Array.from(document.querySelectorAll(".mobile-tab[data-activate]"));
       const panelOrder = ["tokens", "address", "utxo"];
 
       let connectedWallet = null;
@@ -1560,7 +1644,11 @@
       const ownerApprovedUtxos = new Set();
       const publicUtxos = new Set();
 
-      function activatePanel(name) {
+      function isSwipeLayout() {
+        return window.matchMedia("(max-width: 1120px)").matches;
+      }
+
+      function activatePanel(name, options = {}) {
         if (!panelOrder.includes(name)) return;
         activePanel = name;
         workspaceGrid.classList.remove("active-tokens", "active-address", "active-utxo");
@@ -1575,6 +1663,18 @@
           panel.classList.toggle("is-left", panelIndex < activeIndex);
           panel.classList.toggle("is-right", panelIndex > activeIndex);
         });
+
+        mobileTabs.forEach((tab) => {
+          tab.classList.toggle("is-active", tab.dataset.activate === name);
+        });
+
+        if (isSwipeLayout() && !options.skipScroll) {
+          const panel = panels[activeIndex];
+          workspaceGrid.scrollTo({
+            left: panel ? panel.offsetLeft - workspaceGrid.offsetLeft : 0,
+            behavior: options.instant ? "auto" : "smooth",
+          });
+        }
       }
 
       async function checkHealth() {
@@ -2363,6 +2463,35 @@
         activatePanel(panel.dataset.panel);
       });
 
+      mobileTabs.forEach((tab) => {
+        tab.addEventListener("click", () => activatePanel(tab.dataset.activate));
+      });
+
+      let swipeSyncTimer = 0;
+      workspaceGrid.addEventListener("scroll", () => {
+        if (!isSwipeLayout()) return;
+        window.clearTimeout(swipeSyncTimer);
+        swipeSyncTimer = window.setTimeout(() => {
+          const gridLeft = workspaceGrid.getBoundingClientRect().left;
+          let nearest = panels[0];
+          let nearestDistance = Number.POSITIVE_INFINITY;
+          panels.forEach((panel) => {
+            const distance = Math.abs(panel.getBoundingClientRect().left - gridLeft);
+            if (distance < nearestDistance) {
+              nearest = panel;
+              nearestDistance = distance;
+            }
+          });
+          activatePanel(nearest.dataset.panel, { skipScroll: true });
+        }, 120);
+      }, { passive: true });
+
+      window.addEventListener("resize", () => {
+        if (isSwipeLayout()) {
+          activatePanel(activePanel, { instant: true });
+        }
+      });
+
       walletButton.addEventListener("click", () => {
         const providers = walletProviders();
         if (providers.length === 1) {
@@ -2371,7 +2500,7 @@
         }
         openWalletConnectDialog();
       });
-      activatePanel("address");
+      activatePanel("address", { instant: true });
       updateWalletButton();
       checkHealth();
       loadTokens();
