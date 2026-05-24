@@ -6,6 +6,13 @@ use axum::{
     response::{Html, IntoResponse, Response},
     routing::{get, post},
 };
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+use bitcoin::{
+    Address, CompressedPublicKey, Network,
+    address::{AddressType, KnownHrp, NetworkUnchecked},
+    secp256k1::Secp256k1,
+    sign_message::{MessageSignature, signed_msg_hash},
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
@@ -66,6 +73,18 @@ struct UtxoAccessQuery {
 struct PublicUtxoRequest {
     utxo: Option<String>,
     wallet: Option<String>,
+    message: Option<String>,
+    signature: Option<String>,
+    provider: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WalletVerifyRequest {
+    utxo: Option<String>,
+    wallet: Option<String>,
+    message: Option<String>,
+    signature: Option<String>,
+    provider: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -147,6 +166,7 @@ pub async fn serve(addr: &str) -> Result<()> {
         .route("/api/utxo/access", get(utxo_access))
         .route("/api/utxo/public", post(public_utxo))
         .route("/api/utxo/assets", get(utxo_assets))
+        .route("/api/wallet/verify", post(wallet_verify))
         .route("/api/tokens", get(tokens_api))
         .route("/api/tokens/{contract_id}", get(token_api))
         .route("/tokens", get(tokens_page))
@@ -342,8 +362,22 @@ async fn public_utxo(
             .into_response();
     }
 
+    let wallet = payload.wallet.unwrap_or_default().trim().to_string();
+    let message = payload.message.unwrap_or_default();
+    let signature = payload.signature.unwrap_or_default();
+    let provider = payload.provider.unwrap_or_default();
+    if let Err(err) = verify_wallet_signature(&utxo, &wallet, &message, &signature) {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({
+                "ok": false,
+                "error": err.to_string(),
+            })),
+        )
+            .into_response();
+    }
+
     let key = format!("redis/utxo/{utxo}");
-    let wallet = payload.wallet.unwrap_or_default();
     let published_at = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|item| item.as_secs())
@@ -351,6 +385,9 @@ async fn public_utxo(
     let value = json!({
         "utxo": utxo,
         "wallet": wallet,
+        "provider": provider,
+        "message": message,
+        "signature": signature,
         "published_at": published_at,
         "source": "kuikly-rgb-viewer",
     })
@@ -388,6 +425,46 @@ async fn public_utxo(
             "reason": "REDIS_URL not configured; stored in this server session",
         }))
         .into_response()
+    }
+}
+
+async fn wallet_verify(Json(payload): Json<WalletVerifyRequest>) -> Response {
+    let utxo = payload.utxo.unwrap_or_default().trim().to_string();
+    let wallet = payload.wallet.unwrap_or_default().trim().to_string();
+    let message = payload.message.unwrap_or_default();
+    let signature = payload.signature.unwrap_or_default();
+    let provider = payload.provider.unwrap_or_default();
+
+    if let Err(err) = validate_outpoint_field(&utxo) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "ok": false,
+                "verified": false,
+                "error": err.to_string(),
+            })),
+        )
+            .into_response();
+    }
+
+    match verify_wallet_signature(&utxo, &wallet, &message, &signature) {
+        Ok(()) => Json(json!({
+            "ok": true,
+            "verified": true,
+            "utxo": utxo,
+            "wallet": wallet,
+            "provider": provider,
+        }))
+        .into_response(),
+        Err(err) => (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({
+                "ok": false,
+                "verified": false,
+                "error": err.to_string(),
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -565,6 +642,95 @@ fn valid_outpoint(value: &str) -> bool {
         && txid.chars().all(|item| item.is_ascii_hexdigit())
         && !vout.is_empty()
         && vout.parse::<u64>().is_ok()
+}
+
+fn validate_outpoint_field(value: &str) -> Result<()> {
+    if value.is_empty() {
+        return Err(anyhow!("missing utxo"));
+    }
+    if !valid_outpoint(value) {
+        return Err(anyhow!("utxo must be formatted as txid:vout"));
+    }
+    Ok(())
+}
+
+fn wallet_auth_message(wallet: &str, utxo: &str) -> String {
+    format!(
+        "BiHelix RGB Viewer\nAction: view UTXO RGB assets\nAddress: {wallet}\nUTXO: {utxo}"
+    )
+}
+
+fn verify_wallet_signature(utxo: &str, wallet: &str, message: &str, signature: &str) -> Result<()> {
+    validate_outpoint_field(utxo)?;
+    if wallet.is_empty() {
+        return Err(anyhow!("missing wallet address"));
+    }
+    if signature.trim().is_empty() {
+        return Err(anyhow!("missing wallet signature"));
+    }
+
+    let expected = wallet_auth_message(wallet, utxo);
+    if message != expected {
+        return Err(anyhow!("wallet message does not match this UTXO and address"));
+    }
+
+    let signature_bytes = BASE64_STANDARD
+        .decode(signature.trim())
+        .map_err(|_| anyhow!("wallet signature must be standard base64"))?;
+    let message_signature = MessageSignature::from_slice(&signature_bytes)
+        .map_err(|err| anyhow!("invalid wallet signature: {err}"))?;
+    let address = wallet
+        .parse::<Address<NetworkUnchecked>>()
+        .with_context(|| format!("invalid wallet address: {wallet}"))?;
+    let msg_hash = signed_msg_hash(message);
+    let secp = Secp256k1::verification_only();
+    let pubkey = message_signature
+        .recover_pubkey(&secp, msg_hash)
+        .map_err(|err| anyhow!("signature cannot recover public key: {err}"))?;
+    let compressed_pubkey = CompressedPublicKey::try_from(pubkey)
+        .map_err(|_| anyhow!("wallet signature must use a compressed public key"))?;
+
+    let networks = [
+        Network::Bitcoin,
+        Network::Testnet,
+        Network::Testnet4,
+        Network::Signet,
+        Network::Regtest,
+    ];
+    for network in networks {
+        if !address.is_valid_for_network(network) {
+            continue;
+        }
+        let checked = match address.clone().require_network(network) {
+            Ok(item) => item,
+            Err(_) => continue,
+        };
+        let candidates = [
+            Address::p2pkh(pubkey.pubkey_hash(), network).to_string(),
+            Address::p2shwpkh(&compressed_pubkey, network).to_string(),
+            Address::p2wpkh(&compressed_pubkey, KnownHrp::from(network)).to_string(),
+            Address::p2tr(
+                &secp,
+                compressed_pubkey.into(),
+                None,
+                KnownHrp::from(network),
+            )
+            .to_string(),
+        ];
+        if candidates.iter().any(|item| item == &checked.to_string()) {
+            return Ok(());
+        }
+        if checked.address_type() == Some(AddressType::P2pkh) {
+            let signed_by = message_signature
+                .is_signed_by_address(&secp, &checked, msg_hash)
+                .unwrap_or(false);
+            if signed_by {
+                return Ok(());
+            }
+        }
+    }
+
+    Err(anyhow!("signature does not match wallet address"))
 }
 
 #[derive(Debug)]

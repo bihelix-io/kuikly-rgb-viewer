@@ -1553,11 +1553,11 @@
             </div>
           </div>
           <div class="token-sheet-body">
-            <div class="wallet-auth-copy">该 UTXO 还没有公开查看记录，需要连接 BTC 钱包确认它属于你的地址。本地演示模式下，点击确认代表钱包已完成所有权确认；显示资产后你可以选择公开这个 UTXO。</div>
+            <div class="wallet-auth-copy">该 UTXO 还没有公开查看记录，需要连接 BTC 钱包并签名确认它属于你的地址。签名只用于证明地址控制权，不会发起链上交易；显示资产后你可以选择公开这个 UTXO。</div>
             <div id="walletAuthUtxo" class="wallet-auth-utxo"></div>
             <div class="wallet-auth-actions">
               <button id="walletAuthCancel" class="wallet-button" type="button">取消</button>
-              <button id="walletAuthConfirm" type="button">确认授权</button>
+              <button id="walletAuthConfirm" type="button">签名授权</button>
             </div>
           </div>
         </section>
@@ -1642,6 +1642,7 @@
       let pendingWalletAuthorization = null;
       const authorizedUtxos = new Set();
       const ownerApprovedUtxos = new Set();
+      const walletProofs = new Map();
       const publicUtxos = new Set();
 
       function isSwipeLayout() {
@@ -1706,6 +1707,39 @@
         return "";
       }
 
+      async function signWalletMessage(provider, message) {
+        if (typeof provider?.signMessage !== "function") {
+          throw new Error("当前钱包不支持消息签名");
+        }
+
+        const attempts = [
+          () => provider.signMessage(message, "ecdsa"),
+          () => provider.signMessage(message),
+        ];
+        let lastError = null;
+        for (const attempt of attempts) {
+          try {
+            const result = await attempt();
+            if (typeof result === "string" && result.trim()) return result.trim();
+            if (typeof result?.signature === "string" && result.signature.trim()) {
+              return result.signature.trim();
+            }
+          } catch (error) {
+            lastError = error;
+          }
+        }
+        throw lastError || new Error("钱包未返回签名");
+      }
+
+      function walletAuthMessage(walletAddress, utxo) {
+        return [
+          "BiHelix RGB Viewer",
+          "Action: view UTXO RGB assets",
+          `Address: ${walletAddress}`,
+          `UTXO: ${utxo}`,
+        ].join("\n");
+      }
+
       function walletProviders() {
         const providers = [];
 
@@ -1719,6 +1753,7 @@
               "requestAccounts",
               "getAccounts",
             ]),
+            signMessage: async (message) => signWalletMessage(bitpocketProvider, message),
           });
         }
 
@@ -1727,6 +1762,7 @@
             name: "Wizz",
             provider: window.wizz,
             connect: async () => firstAccount(window.wizz, ["requestAccounts", "getAccounts"]),
+            signMessage: async (message) => signWalletMessage(window.wizz, message),
           });
         }
 
@@ -1736,6 +1772,7 @@
             name: "OKX",
             provider: okxProvider,
             connect: async () => firstAccount(okxProvider, ["requestAccounts", "getAccounts"]),
+            signMessage: async (message) => signWalletMessage(okxProvider, message),
           });
         }
 
@@ -1750,7 +1787,7 @@
         provider.on("accountsChanged", (accounts) => {
           const nextAddress = Array.isArray(accounts) ? accounts[0] : "";
           if (!nextAddress) return;
-          connectedWallet = { name: providerConfig.name, address: nextAddress };
+          connectedWallet = { name: providerConfig.name, address: nextAddress, providerConfig };
           address.value = nextAddress;
           walletButton.textContent = `${providerConfig.name} ${shortAddress(nextAddress)}`;
           setNotice(`已切换到 ${providerConfig.name} 地址，正在刷新记录...`);
@@ -1815,7 +1852,7 @@
           const walletAddress = await providerConfig.connect();
           if (!walletAddress) throw new Error("钱包未返回地址");
 
-          connectedWallet = { name: providerConfig.name, address: walletAddress };
+          connectedWallet = { name: providerConfig.name, address: walletAddress, providerConfig };
           address.value = walletAddress;
           subscribeWallet(providerConfig);
           setNotice(`已连接 ${providerConfig.name}，正在查询链上记录...`);
@@ -1886,13 +1923,13 @@
           }
 
           const reason = data.checked ? "该 UTXO 暂无授权记录。" : "暂未读取到授权记录。";
-          return requestMockWalletAuthorization(utxo, reason);
+          return requestWalletAuthorization(utxo, reason);
         } catch (error) {
-          return requestMockWalletAuthorization(utxo, `授权状态检查失败：${error.message}`);
+          return requestWalletAuthorization(utxo, `授权状态检查失败：${error.message}`);
         }
       }
 
-      function requestMockWalletAuthorization(utxo, reason) {
+      function requestWalletAuthorization(utxo, reason) {
         if (pendingWalletAuthorization) {
           pendingWalletAuthorization.resolve(false);
           pendingWalletAuthorization = null;
@@ -1907,24 +1944,69 @@
         });
       }
 
-      function resolveWalletAuthorization(approved) {
+      async function resolveWalletAuthorization(approved) {
         if (!pendingWalletAuthorization) {
           walletAuthDialog.hidden = true;
           return;
         }
 
         const { utxo, resolve } = pendingWalletAuthorization;
-        pendingWalletAuthorization = null;
-        walletAuthDialog.hidden = true;
-
-        if (approved) {
-          authorizedUtxos.add(utxo);
-          ownerApprovedUtxos.add(utxo);
-          connectedWallet = connectedWallet || { name: "Mock Wallet", address: "authorized" };
-          walletButton.textContent = "钱包已授权";
+        if (!approved) {
+          pendingWalletAuthorization = null;
+          walletAuthDialog.hidden = true;
+          resolve(false);
+          return;
         }
 
-        resolve(approved);
+        walletAuthConfirm.disabled = true;
+        walletAuthConfirm.textContent = "等待签名...";
+        try {
+          const wallet = connectedWallet || await connectWallet("", { silent: true });
+          if (!wallet?.address || !wallet?.providerConfig) {
+            throw new Error("请先连接 BitPocket、Wizz 或 OKX 钱包");
+          }
+          const message = walletAuthMessage(wallet.address, utxo);
+          const signature = await wallet.providerConfig.signMessage(message);
+          walletAuthConfirm.textContent = "校验签名...";
+          const response = await fetch(`${API_BASE}/api/wallet/verify`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              utxo,
+              wallet: wallet.address,
+              provider: wallet.name,
+              message,
+              signature,
+            }),
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok || !data.verified) {
+            throw new Error(data.error || "钱包签名校验失败");
+          }
+
+          const proof = {
+            utxo,
+            wallet: wallet.address,
+            provider: wallet.name,
+            message,
+            signature,
+          };
+          walletProofs.set(utxo, proof);
+          authorizedUtxos.add(utxo);
+          ownerApprovedUtxos.add(utxo);
+          updateWalletButton();
+          pendingWalletAuthorization = null;
+          walletAuthDialog.hidden = true;
+          resolve(true);
+        } catch (error) {
+          setUtxoNotice(`钱包签名授权失败：${error.message || "用户取消或钱包不可用"}`, true);
+          pendingWalletAuthorization = null;
+          walletAuthDialog.hidden = true;
+          resolve(false);
+        } finally {
+          walletAuthConfirm.disabled = false;
+          walletAuthConfirm.textContent = "签名授权";
+        }
       }
 
       function text(value) {
@@ -2364,13 +2446,14 @@
         publicButton.disabled = true;
         publicButton.textContent = "公开中...";
         try {
+          const proof = walletProofs.get(utxo);
+          if (!proof) {
+            throw new Error("缺少钱包签名证明，请重新签名授权");
+          }
           const response = await fetch(`${API_BASE}/api/utxo/public`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              utxo,
-              wallet: connectedWallet?.address || connectedWallet?.name || "mock-wallet",
-            }),
+            body: JSON.stringify(proof),
           });
           const data = await response.json();
           if (!response.ok || !data.ok) {
