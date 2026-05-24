@@ -60,7 +60,7 @@ GET /token/<contract_id>
 
 UTXO 详情会用启动时缓存的 token-list 给 RGB 资产补充 ticker、名称、图标、描述、精度和合约详情。
 
-页面右上角提供“连接 BTC 钱包”，当前按顺序尝试 Wizz、BitPocket、UniSat、OKX。连接成功后会自动把钱包地址填入地址输入框并查询链上记录。
+页面右上角提供“连接 BTC 钱包”，当前支持 BitPocket 和 Wizz。连接成功后会自动把钱包地址填入地址输入框并查询链上记录。在钱包内置 DApp 浏览器打开时，页面会检测注入的 provider 并自动尝试连接一次。
 
 ## Kuikly 页面
 

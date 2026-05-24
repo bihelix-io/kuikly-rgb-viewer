@@ -797,6 +797,38 @@
         margin-top: 18px;
       }
 
+      .wallet-provider-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .wallet-provider-button {
+        width: 100%;
+        height: auto;
+        min-height: 54px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+        text-align: left;
+      }
+
+      .wallet-provider-name {
+        display: block;
+        font-size: 15px;
+        line-height: 20px;
+      }
+
+      .wallet-provider-state {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 17px;
+      }
+
       .utxo-public-box {
         display: flex;
         align-items: center;
@@ -1447,6 +1479,24 @@
           </div>
         </section>
       </div>
+
+      <div id="walletConnectDialog" class="token-sheet" hidden>
+        <button id="walletConnectBackdrop" class="token-sheet-backdrop" type="button" aria-label="关闭钱包连接"></button>
+        <section class="token-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="walletConnectTitle">
+          <div class="token-sheet-grip"></div>
+          <div class="token-sheet-head">
+            <div>
+              <h2 id="walletConnectTitle" class="token-sheet-title">连接 BTC 钱包</h2>
+              <div class="token-sheet-subtitle">选择钱包内置 DApp provider 获取当前地址</div>
+            </div>
+            <button id="walletConnectClose" class="token-sheet-close" type="button" aria-label="关闭">×</button>
+          </div>
+          <div class="token-sheet-body">
+            <div id="walletConnectNotice" class="wallet-auth-copy"></div>
+            <div id="walletProviderList" class="wallet-provider-list"></div>
+          </div>
+        </section>
+      </div>
     </main>
 
     <script>
@@ -1485,12 +1535,18 @@
       const walletAuthUtxo = document.getElementById("walletAuthUtxo");
       const walletAuthCancel = document.getElementById("walletAuthCancel");
       const walletAuthConfirm = document.getElementById("walletAuthConfirm");
+      const walletConnectDialog = document.getElementById("walletConnectDialog");
+      const walletConnectBackdrop = document.getElementById("walletConnectBackdrop");
+      const walletConnectClose = document.getElementById("walletConnectClose");
+      const walletConnectNotice = document.getElementById("walletConnectNotice");
+      const walletProviderList = document.getElementById("walletProviderList");
       const workspaceGrid = document.getElementById("workspaceGrid");
       const panels = Array.from(document.querySelectorAll(".panel[data-panel]"));
       const panelOrder = ["tokens", "address", "utxo"];
 
       let connectedWallet = null;
-      let walletSubscribed = false;
+      let subscribedWalletProvider = null;
+      let autoConnectAttempted = false;
       let activePanel = "address";
       let pendingWalletAuthorization = null;
       const authorizedUtxos = new Set();
@@ -1531,48 +1587,49 @@
         return `${addressText.slice(0, 6)}...${addressText.slice(-6)}`;
       }
 
+      async function firstAccount(provider, methods) {
+        for (const method of methods) {
+          if (typeof provider?.[method] !== "function") continue;
+          const result = await provider[method].call(provider);
+          if (Array.isArray(result)) return result[0] || "";
+          if (typeof result === "string") return result;
+          if (Array.isArray(result?.accounts)) return result.accounts[0] || "";
+          if (typeof result?.address === "string") return result.address;
+        }
+        return "";
+      }
+
       function walletProviders() {
         const providers = [];
+
+        const bitpocketProvider = window.bitpocket?.unisat || window.bitpocket?.bitcoin || window.bitpocket;
+        if (bitpocketProvider) {
+          providers.push({
+            name: "BitPocket",
+            provider: bitpocketProvider,
+            connect: async () => firstAccount(bitpocketProvider, [
+              "getBiHelixAccounts",
+              "requestAccounts",
+              "getAccounts",
+            ]),
+          });
+        }
+
         if (window.wizz) {
           providers.push({
             name: "Wizz",
             provider: window.wizz,
-            connect: async () => (await window.wizz.requestAccounts())?.[0] || "",
+            connect: async () => firstAccount(window.wizz, ["requestAccounts", "getAccounts"]),
           });
         }
-        if (window.bitpocket?.unisat) {
-          providers.push({
-            name: "BitPocket",
-            provider: window.bitpocket.unisat,
-            connect: async () => {
-              if (window.bitpocket.unisat.getBiHelixAccounts) {
-                return (await window.bitpocket.unisat.getBiHelixAccounts())?.[0] || "";
-              }
-              return (await window.bitpocket.unisat.requestAccounts())?.[0] || "";
-            },
-          });
-        }
-        if (window.unisat) {
-          providers.push({
-            name: "UniSat",
-            provider: window.unisat,
-            connect: async () => (await window.unisat.requestAccounts())?.[0] || "",
-          });
-        }
-        if (window.okxwallet?.bitcoin) {
-          providers.push({
-            name: "OKX",
-            provider: window.okxwallet.bitcoin,
-            connect: async () => (await window.okxwallet.bitcoin.requestAccounts())?.[0] || "",
-          });
-        }
+
         return providers;
       }
 
       function subscribeWallet(providerConfig) {
         const provider = providerConfig.provider;
-        if (!provider || !provider.on || walletSubscribed) return;
-        walletSubscribed = true;
+        if (!provider || !provider.on || subscribedWalletProvider === provider) return;
+        subscribedWalletProvider = provider;
 
         provider.on("accountsChanged", (accounts) => {
           const nextAddress = Array.isArray(accounts) ? accounts[0] : "";
@@ -1585,34 +1642,104 @@
         });
       }
 
-      async function connectWallet() {
-        const providers = walletProviders();
-        if (!providers.length) {
-          setNotice("未检测到 BTC 钱包插件。请安装或打开 Wizz、BitPocket、UniSat 或 OKX 钱包。", true);
+      function updateWalletButton() {
+        if (connectedWallet) {
+          walletButton.textContent = `${connectedWallet.name} ${shortAddress(connectedWallet.address)}`;
           return;
         }
 
+        const providers = walletProviders();
+        walletButton.textContent = providers.length
+          ? `连接 ${providers.map((provider) => provider.name).join(" / ")}`
+          : "连接 BTC 钱包";
+      }
+
+      function closeWalletConnectDialog() {
+        walletConnectDialog.hidden = true;
+      }
+
+      function openWalletConnectDialog() {
+        const providers = walletProviders();
+        if (!providers.length) {
+          walletConnectNotice.textContent = "未检测到 BitPocket 或 Wizz。请在钱包内置浏览器打开本 DApp，或安装对应浏览器插件。";
+          walletProviderList.innerHTML = "";
+          walletConnectDialog.hidden = false;
+          return;
+        }
+
+        walletConnectNotice.textContent = "检测到以下 BTC 钱包入口。连接后会自动读取地址并查询链上记录。";
+        walletProviderList.innerHTML = providers
+          .map((provider) => `
+            <button class="wallet-provider-button" type="button" data-wallet="${provider.name}">
+              <span>
+                <strong class="wallet-provider-name">${provider.name}</strong>
+                <span class="wallet-provider-state">已检测到 provider</span>
+              </span>
+              <span>连接</span>
+            </button>
+          `)
+          .join("");
+        walletConnectDialog.hidden = false;
+      }
+
+      async function connectWallet(preferredName = "", options = {}) {
+        const silent = Boolean(options.silent);
+        const providers = walletProviders();
+        if (!providers.length) {
+          if (!silent) {
+            setNotice("未检测到 BitPocket 或 Wizz。请在钱包内置浏览器打开本 DApp，或安装对应浏览器插件。", true);
+          }
+          return null;
+        }
+
+        const providerConfig = providers.find((item) => item.name === preferredName) || providers[0];
         walletButton.disabled = true;
         walletButton.textContent = "连接中...";
         try {
-          const providerConfig = providers[0];
           const walletAddress = await providerConfig.connect();
           if (!walletAddress) throw new Error("钱包未返回地址");
 
           connectedWallet = { name: providerConfig.name, address: walletAddress };
           address.value = walletAddress;
-          walletButton.textContent = `${providerConfig.name} ${shortAddress(walletAddress)}`;
           subscribeWallet(providerConfig);
           setNotice(`已连接 ${providerConfig.name}，正在查询链上记录...`);
+          updateWalletButton();
+          closeWalletConnectDialog();
           form.requestSubmit();
+          return connectedWallet;
         } catch (error) {
-          walletButton.textContent = connectedWallet
-            ? `${connectedWallet.name} ${shortAddress(connectedWallet.address)}`
-            : "连接 BTC 钱包";
-          setNotice(`钱包连接失败：${error.message || "用户取消或钱包不可用"}`, true);
+          updateWalletButton();
+          if (!silent) {
+            setNotice(`钱包连接失败：${error.message || "用户取消或钱包不可用"}`, true);
+          }
+          return null;
         } finally {
           walletButton.disabled = false;
         }
+      }
+
+      function autoConnectWallet(retry = 0) {
+        if (connectedWallet || autoConnectAttempted) return;
+
+        const providers = walletProviders();
+        if (!providers.length) {
+          if (retry < 12) {
+            window.setTimeout(() => autoConnectWallet(retry + 1), 250);
+          }
+          return;
+        }
+
+        autoConnectAttempted = true;
+        const providerConfig =
+          providers.find((provider) => provider.name === "BitPocket") ||
+          providers.find((provider) => provider.name === "Wizz") ||
+          providers[0];
+        setNotice(`检测到 ${providerConfig.name} DApp 环境，正在自动连接...`);
+        connectWallet(providerConfig.name, { silent: true }).then((wallet) => {
+          if (!wallet) {
+            setNotice(`检测到 ${providerConfig.name}，请点击右上角连接钱包完成授权。`);
+          }
+        });
       }
 
       function setNotice(value, isError = false) {
@@ -2182,7 +2309,18 @@
       walletAuthBackdrop.addEventListener("click", () => resolveWalletAuthorization(false));
       walletAuthCancel.addEventListener("click", () => resolveWalletAuthorization(false));
       walletAuthConfirm.addEventListener("click", () => resolveWalletAuthorization(true));
+      walletConnectBackdrop.addEventListener("click", closeWalletConnectDialog);
+      walletConnectClose.addEventListener("click", closeWalletConnectDialog);
+      walletProviderList.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-wallet]");
+        if (!button || !walletProviderList.contains(button)) return;
+        connectWallet(button.dataset.wallet);
+      });
       document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !walletConnectDialog.hidden) {
+          closeWalletConnectDialog();
+          return;
+        }
         if (event.key === "Escape" && !walletAuthDialog.hidden) {
           resolveWalletAuthorization(false);
           return;
@@ -2208,10 +2346,19 @@
         activatePanel(panel.dataset.panel);
       });
 
-      walletButton.addEventListener("click", connectWallet);
+      walletButton.addEventListener("click", () => {
+        const providers = walletProviders();
+        if (providers.length === 1) {
+          connectWallet(providers[0].name);
+          return;
+        }
+        openWalletConnectDialog();
+      });
       activatePanel("address");
+      updateWalletButton();
       checkHealth();
       loadTokens();
+      autoConnectWallet();
     </script>
   </body>
 </html>
