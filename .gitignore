@@ -1,0 +1,19 @@
+.DS_Store
+*.iml
+
+# Rust
+/target/
+
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+build/
+**/build/
+
+# Android / IDE
+.idea/
+local.properties
+
+# Logs and temporary files
+*.log
+*.tmp

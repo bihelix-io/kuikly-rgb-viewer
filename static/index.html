@@ -1,0 +1,2217 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RGB 资产工作台</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7fb;
+        --panel: #ffffff;
+        --line: #dde3ee;
+        --text: #111827;
+        --muted: #667085;
+        --blue: #276ef1;
+        --green: #147a47;
+        --amber: #b54708;
+        --red: #d92d20;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .app {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 28px 18px 40px;
+      }
+
+      .topbar,
+      .top-actions,
+      .brand,
+      .tx-head,
+      .tx-line {
+        display: flex;
+        align-items: center;
+      }
+
+      .topbar {
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 22px;
+      }
+
+      .top-actions {
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .brand {
+        gap: 12px;
+      }
+
+      .mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        background: #101828;
+        color: #ffffff;
+        font-weight: 800;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 26px;
+        line-height: 32px;
+      }
+
+      .subtitle {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 8px;
+        padding: 9px 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--amber);
+      }
+
+      .dot.ok {
+        background: var(--green);
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: minmax(260px, 1.5fr) 150px auto;
+        gap: 10px;
+        align-items: end;
+        padding: 14px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      label {
+        display: block;
+        color: #344054;
+        font-size: 13px;
+        font-weight: 650;
+        margin-bottom: 7px;
+      }
+
+      input,
+      select {
+        width: 100%;
+        height: 42px;
+        border: 1px solid #cfd6e4;
+        border-radius: 8px;
+        padding: 0 12px;
+        font: inherit;
+        color: var(--text);
+        background: #ffffff;
+        outline: none;
+      }
+
+      input:focus,
+      select:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px rgba(39, 110, 241, 0.12);
+      }
+
+      button {
+        height: 42px;
+        border: 0;
+        border-radius: 8px;
+        padding: 0 18px;
+        background: var(--blue);
+        color: #ffffff;
+        font-weight: 750;
+        cursor: pointer;
+      }
+
+      .wallet-button {
+        border: 1px solid #cfd6e4;
+        background: #ffffff;
+        color: #1d2939;
+      }
+
+      .nav-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 42px;
+        border-radius: 8px;
+        padding: 0 14px;
+        font-size: 13px;
+        font-weight: 750;
+      }
+
+      button:disabled {
+        background: #8a93a5;
+        cursor: wait;
+      }
+
+      .notice {
+        min-height: 22px;
+        margin: 12px 2px 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .notice.error {
+        color: var(--red);
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin: 18px 0 12px;
+      }
+
+      .metric {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 13px 14px;
+      }
+
+      .metric span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .metric strong {
+        display: block;
+        margin-top: 5px;
+        font-size: 22px;
+        line-height: 28px;
+        font-weight: 900;
+      }
+
+      .panel {
+        margin-top: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.74);
+        padding: 14px;
+      }
+
+      .panel:first-of-type {
+        margin-top: 0;
+      }
+
+      .panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 14px;
+        margin-bottom: 12px;
+      }
+
+      .panel-title {
+        margin: 0;
+        font-size: 18px;
+        line-height: 24px;
+      }
+
+      .panel-subtitle {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .token-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .token-card {
+        display: grid;
+        grid-template-columns: 46px minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        width: 100%;
+        height: auto;
+        min-height: 84px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 12px;
+        color: inherit;
+        text-align: left;
+      }
+
+      .token-logo {
+        width: 46px;
+        height: 46px;
+        border-radius: 999px;
+        border: 1px solid #dfe6f1;
+        background: #f8fafc;
+        display: grid;
+        place-items: center;
+        object-fit: cover;
+        color: #344054;
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .token-symbol {
+        color: #1d2939;
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .token-name,
+      .token-meta {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 17px;
+        overflow-wrap: anywhere;
+      }
+
+      .utxo-lookup {
+        display: grid;
+        grid-template-columns: minmax(260px, 1fr) auto;
+        gap: 10px;
+        align-items: end;
+      }
+
+      .utxo-result {
+        margin-top: 12px;
+      }
+
+      .list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .tx {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 15px;
+      }
+
+      .tx-head {
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .txid {
+        font-size: 14px;
+        font-weight: 800;
+        overflow-wrap: anywhere;
+      }
+
+      .amount {
+        white-space: nowrap;
+        font-size: 21px;
+        line-height: 28px;
+        font-weight: 950;
+      }
+
+      .amount.receive {
+        color: var(--green);
+      }
+
+      .amount.send {
+        color: var(--red);
+      }
+
+      .amount.self {
+        color: var(--muted);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        height: 24px;
+        border-radius: 999px;
+        padding: 0 9px;
+        background: #fff7ed;
+        color: var(--amber);
+        font-size: 12px;
+        font-weight: 750;
+      }
+
+      .pill.confirmed {
+        background: #ecfdf3;
+        color: var(--green);
+      }
+
+      .meta {
+        display: grid;
+        gap: 7px;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 18px;
+      }
+
+      .tx-line {
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .utxo-groups {
+        display: grid;
+        gap: 10px;
+        margin-top: 13px;
+      }
+
+      .utxo-group {
+        display: grid;
+        gap: 7px;
+        border-top: 1px solid #edf1f7;
+        padding-top: 10px;
+      }
+
+      .utxo-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #344054;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .utxo-title::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--muted);
+      }
+
+      .utxo-group.spent .utxo-title::before {
+        background: var(--red);
+      }
+
+      .utxo-group.received .utxo-title::before {
+        background: var(--green);
+      }
+
+      .utxo-list {
+        display: grid;
+        gap: 6px;
+      }
+
+      .utxo {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        border: 1px solid #e5eaf3;
+        border-radius: 8px;
+        background: #f8fafc;
+        padding: 9px 10px;
+      }
+
+      .utxo-code,
+      .utxo-action {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        color: #1d2939;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+        line-height: 17px;
+      }
+
+      .utxo-action {
+        width: auto;
+        height: auto;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+        background: transparent;
+        color: var(--blue);
+        cursor: pointer;
+        font-weight: 800;
+        text-align: left;
+      }
+
+      .utxo-action:hover {
+        text-decoration: underline;
+      }
+
+      .utxo-action:disabled {
+        background: transparent;
+        color: var(--muted);
+        cursor: wait;
+      }
+
+      .utxo-value {
+        white-space: nowrap;
+        color: #344054;
+        font-size: 15px;
+        line-height: 22px;
+        font-weight: 900;
+      }
+
+      .utxo-detail {
+        grid-column: 1 / -1;
+        display: grid;
+        gap: 8px;
+        border-top: 1px solid #e5eaf3;
+        padding-top: 9px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .utxo-detail[hidden] {
+        display: none;
+      }
+
+      .asset-line {
+        display: grid;
+        grid-template-columns: minmax(180px, 1fr) minmax(120px, auto) auto;
+        gap: 10px;
+        align-items: center;
+        border: 1px solid #dfe6f1;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 8px 9px;
+      }
+
+      .asset-main {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        min-width: 0;
+      }
+
+      .asset-logo {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        border: 1px solid #dfe6f1;
+        background: #f8fafc;
+        object-fit: cover;
+        flex: 0 0 auto;
+      }
+
+      .asset-symbol {
+        color: #1d2939;
+        font-weight: 850;
+      }
+
+      .asset-name,
+      .asset-description,
+      .asset-from {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 16px;
+      }
+
+      .asset-contract,
+      .asset-from {
+        overflow-wrap: anywhere;
+      }
+
+      .asset-amount {
+        color: #1d2939;
+        font-size: 16px;
+        line-height: 22px;
+        font-weight: 950;
+        text-align: right;
+      }
+
+      .asset-detail-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: auto;
+        height: 30px;
+        border: 1px solid #cfd6e4;
+        border-radius: 8px;
+        background: #ffffff;
+        color: var(--blue);
+        padding: 0 10px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .asset-detail {
+        grid-column: 1 / -1;
+        display: grid;
+        gap: 6px;
+        border-top: 1px solid #edf1f7;
+        padding-top: 8px;
+      }
+
+      .asset-detail[hidden] {
+        display: none;
+      }
+
+      .json-detail {
+        max-height: min(52vh, 560px);
+        overflow: auto;
+        margin: 0;
+        border: 1px solid #dfe6f1;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 9px;
+        color: #1d2939;
+        font-size: 11px;
+        line-height: 16px;
+        white-space: pre-wrap;
+      }
+
+      .json-viewer {
+        max-height: min(68vh, 760px);
+        overflow: auto;
+        margin-top: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025)),
+          #121116;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+
+      .json-viewer-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 10px 12px;
+      }
+
+      .json-viewer-title {
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .json-viewer-badge {
+        border: 1px solid rgba(255, 141, 0, 0.28);
+        border-radius: 999px;
+        background: rgba(255, 141, 0, 0.1);
+        color: #ffb45a;
+        padding: 3px 8px;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .json-pretty {
+        margin: 0;
+        padding: 14px;
+        color: rgba(255, 255, 255, 0.76);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+        line-height: 19px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .json-key {
+        color: #ffb45a;
+      }
+
+      .json-string {
+        color: #91f0ad;
+      }
+
+      .json-number {
+        color: #8ecbff;
+      }
+
+      .json-bool {
+        color: #d8a8ff;
+      }
+
+      .json-null {
+        color: rgba(255, 255, 255, 0.42);
+      }
+
+      .token-sheet {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: grid;
+        align-items: end;
+      }
+
+      .token-sheet[hidden] {
+        display: none;
+      }
+
+      .token-sheet-backdrop {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+        border-radius: 0;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 0;
+      }
+
+      .token-sheet-panel {
+        position: relative;
+        width: min(960px, calc(100vw - 28px));
+        max-height: calc(100vh - 12px);
+        margin: 0 auto 4px;
+        border: 1px solid var(--line);
+        border-radius: 16px 16px 8px 8px;
+        background: var(--panel);
+        box-shadow: 0 -24px 80px rgba(0, 0, 0, 0.32);
+        overflow: hidden;
+        animation: tokenSheetIn 0.24s ease-out;
+      }
+
+      .token-sheet-grip {
+        width: 48px;
+        height: 4px;
+        margin: 10px auto 6px;
+        border-radius: 999px;
+        background: var(--line);
+      }
+
+      .token-sheet-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 8px 18px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .token-sheet-title {
+        margin: 0;
+        font-size: 18px;
+        line-height: 24px;
+      }
+
+      .token-sheet-subtitle {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+
+      .token-sheet-close {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        padding: 0;
+        flex: 0 0 auto;
+      }
+
+      .token-sheet-body {
+        max-height: calc(100vh - 96px);
+        overflow: auto;
+        padding: 16px 18px 18px;
+      }
+
+      .token-sheet-summary {
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr);
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+
+      .token-sheet-logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.1);
+        object-fit: cover;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 850;
+      }
+
+      .token-sheet-symbol {
+        font-size: 24px;
+        line-height: 30px;
+        font-weight: 900;
+      }
+
+      .token-sheet-name,
+      .token-sheet-description {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 19px;
+      }
+
+      .token-sheet-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin: 12px 0;
+      }
+
+      .wallet-auth-copy {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 21px;
+      }
+
+      .wallet-auth-utxo {
+        margin-top: 10px;
+        overflow-wrap: anywhere;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+      }
+
+      .wallet-auth-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .utxo-public-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border: 1px solid rgba(255, 141, 0, 0.34);
+        border-radius: 8px;
+        background: rgba(255, 141, 0, 0.1);
+        color: rgba(255, 255, 255, 0.86);
+        padding: 10px 12px;
+      }
+
+      .utxo-public-copy {
+        font-size: 13px;
+        line-height: 19px;
+      }
+
+      .utxo-public-button {
+        width: auto;
+        flex: 0 0 auto;
+      }
+
+      .utxo-public-box.is-public {
+        border-color: rgba(34, 197, 94, 0.36);
+        background: rgba(34, 197, 94, 0.12);
+      }
+
+      .token-sheet-stat {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .token-sheet-stat span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .token-sheet-stat strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 18px;
+        line-height: 24px;
+        overflow-wrap: anywhere;
+      }
+
+      @keyframes tokenSheetIn {
+        from {
+          opacity: 0;
+          transform: translateY(30px) scale(0.985);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      a {
+        color: var(--blue);
+        text-decoration: none;
+      }
+
+      .empty {
+        margin-top: 22px;
+        padding: 30px 18px;
+        text-align: center;
+        color: var(--muted);
+        border: 1px dashed #b9c2d4;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.58);
+      }
+
+      @media (max-width: 760px) {
+        .topbar,
+        .top-actions,
+        .tx-head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .toolbar,
+        .summary,
+        .token-grid,
+        .utxo-lookup {
+          grid-template-columns: 1fr;
+        }
+
+        button {
+          width: 100%;
+        }
+
+        .utxo {
+          grid-template-columns: 1fr;
+        }
+
+        .asset-line {
+          grid-template-columns: 1fr;
+        }
+
+        .asset-amount {
+          text-align: left;
+        }
+      }
+
+      :root {
+        --bg: #0b0a0c;
+        --panel: rgba(255, 255, 255, 0.08);
+        --line: rgba(255, 255, 255, 0.14);
+        --text: #ffffff;
+        --muted: rgba(255, 255, 255, 0.58);
+        --blue: #ff8d00;
+        --green: #22c55e;
+        --amber: #ff8d00;
+        --red: #ff4d4f;
+        --accent-purple: #9f3acf;
+        color-scheme: dark;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 18% 10%, rgba(255, 141, 0, 0.18), transparent 26%),
+          radial-gradient(circle at 82% 12%, rgba(159, 58, 207, 0.18), transparent 28%),
+          #0b0a0c;
+        color: var(--text);
+      }
+
+      .app {
+        max-width: 1680px;
+        padding: 26px 32px 36px;
+      }
+
+      .topbar {
+        min-height: 58px;
+        margin-bottom: 20px;
+        padding: 0 4px;
+      }
+
+      .brand {
+        gap: 16px;
+      }
+
+      .brand-logo {
+        width: 136px;
+        height: 30px;
+        flex: 0 0 auto;
+      }
+
+      .brand-text {
+        border-left: 1px solid rgba(255, 255, 255, 0.16);
+        padding-left: 16px;
+      }
+
+      h1 {
+        font-size: 24px;
+        line-height: 30px;
+      }
+
+      .subtitle,
+      .panel-subtitle,
+      .notice,
+      .metric span,
+      .meta,
+      .token-name,
+      .token-meta,
+      .asset-name,
+      .asset-description,
+      .asset-from {
+        color: var(--muted);
+      }
+
+      .status,
+      .wallet-button,
+      .nav-button {
+        border-color: rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+        backdrop-filter: blur(12px);
+      }
+
+      .workspace-grid {
+        display: grid;
+        grid-template-columns: 0.52fr 1.96fr 0.52fr;
+        gap: 16px;
+        align-items: start;
+        transition: grid-template-columns 0.3s ease;
+      }
+
+      .workspace-grid.active-tokens {
+        grid-template-columns: 0.98fr 1.01fr 1.01fr;
+      }
+
+      .workspace-grid.active-address {
+        grid-template-columns: 0.52fr 1.96fr 0.52fr;
+      }
+
+      .workspace-grid.active-utxo {
+        grid-template-columns: 0.52fr 0.52fr 1.96fr;
+      }
+
+      .panel {
+        min-height: calc(100vh - 118px);
+        margin-top: 0;
+        border-color: rgba(255, 255, 255, 0.13);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.055)),
+          rgba(11, 10, 12, 0.78);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(16px);
+        overflow: hidden;
+        cursor: pointer;
+        position: relative;
+        will-change: opacity, border-color, box-shadow;
+        transition:
+          opacity 0.24s ease,
+          border-color 0.28s ease,
+          box-shadow 0.28s ease,
+          background 0.28s ease;
+      }
+
+      .panel::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        background:
+          linear-gradient(110deg, rgba(255, 255, 255, 0.18), transparent 22%),
+          linear-gradient(290deg, rgba(255, 141, 0, 0.22), transparent 34%);
+        transition: opacity 0.34s ease;
+        z-index: 0;
+      }
+
+      .panel > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .panel.is-active {
+        z-index: 3;
+        cursor: default;
+        border-color: rgba(255, 141, 0, 0.44);
+        box-shadow:
+          0 26px 74px rgba(0, 0, 0, 0.46),
+          0 0 0 1px rgba(255, 141, 0, 0.18) inset,
+          0 0 28px rgba(255, 141, 0, 0.12);
+      }
+
+      .panel.is-active::before {
+        opacity: 0.55;
+      }
+
+      .panel.is-inactive {
+        opacity: 0.56;
+      }
+
+      .panel.is-inactive:hover {
+        opacity: 0.78;
+        border-color: rgba(255, 141, 0, 0.3);
+      }
+
+      .panel.is-inactive .panel-body {
+        max-height: calc(100vh - 250px);
+        overflow: hidden;
+        mask-image: linear-gradient(to bottom, #000 70%, transparent);
+      }
+
+      .panel.is-inactive .nav-button {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .panel-switch {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        padding: 0;
+        color: #0b0a0c;
+        background: linear-gradient(90deg, #f58415 0%, #9f3acf 100%);
+        flex: 0 0 auto;
+      }
+
+      .panel-head {
+        min-height: 82px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 12px;
+      }
+
+      .panel-title {
+        color: #ffffff;
+      }
+
+      .panel-title::first-letter {
+        color: #ff8d00;
+      }
+
+      .toolbar,
+      .utxo-lookup {
+        grid-template-columns: 1fr;
+        border-color: rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      label {
+        color: rgba(255, 255, 255, 0.82);
+      }
+
+      input,
+      select {
+        border-color: rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+      }
+
+      button,
+      #submitButton,
+      #utxoButton {
+        background: linear-gradient(90deg, #f58415 0%, #9f3acf 100%);
+        color: #0b0a0c;
+      }
+
+      button:disabled {
+        background: rgba(255, 255, 255, 0.28);
+        color: rgba(255, 255, 255, 0.64);
+      }
+
+      .summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 12px;
+      }
+
+      .metric,
+      .tx,
+      .token-card,
+      .utxo,
+      .asset-line,
+      .empty {
+        border-color: rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.07);
+      }
+
+      .metric strong,
+      .txid,
+      .asset-symbol,
+      .asset-amount,
+      .utxo-value,
+      .utxo-code {
+        color: #ffffff;
+      }
+
+      .token-grid,
+      .list,
+      .utxo-result {
+        max-height: calc(100vh - 370px);
+        overflow: auto;
+        padding-right: 2px;
+      }
+
+      .token-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .token-card {
+        color: #ffffff;
+        transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+      }
+
+      .token-card:hover {
+        border-color: rgba(255, 141, 0, 0.72);
+        background: rgba(255, 141, 0, 0.12);
+        transform: translateY(-1px);
+      }
+
+      .token-logo,
+      .asset-logo {
+        border-color: rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .utxo-action,
+      a {
+        color: #ffb45a;
+      }
+
+      .utxo-detail,
+      .utxo-group {
+        border-top-color: rgba(255, 255, 255, 0.11);
+      }
+
+      .utxo-title {
+        width: max-content;
+        max-width: 100%;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        padding: 4px 10px;
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.88);
+      }
+
+      .utxo-group.spent .utxo-title {
+        border-color: rgba(255, 77, 79, 0.36);
+        background: rgba(255, 77, 79, 0.14);
+        color: #ffb3ad;
+      }
+
+      .utxo-group.received .utxo-title {
+        border-color: rgba(34, 197, 94, 0.36);
+        background: rgba(34, 197, 94, 0.14);
+        color: #91f0ad;
+      }
+
+      .utxo-title::before {
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+      }
+
+      .asset-detail-button {
+        border-color: rgba(255, 141, 0, 0.5);
+        background: rgba(255, 141, 0, 0.1);
+        color: #ffb45a;
+      }
+
+      .json-detail {
+        border-color: rgba(255, 255, 255, 0.12);
+        background: rgba(0, 0, 0, 0.32);
+        color: rgba(255, 255, 255, 0.82);
+      }
+
+      .json-viewer {
+        border-color: rgba(255, 141, 0, 0.18);
+      }
+
+      .token-sheet-backdrop {
+        background: rgba(0, 0, 0, 0.64);
+        backdrop-filter: blur(8px);
+      }
+
+      .token-sheet-panel {
+        border-color: rgba(255, 141, 0, 0.34);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08)),
+          #111013;
+        box-shadow:
+          0 -28px 90px rgba(0, 0, 0, 0.62),
+          0 0 38px rgba(255, 141, 0, 0.13);
+      }
+
+      .token-sheet-grip {
+        background: rgba(255, 255, 255, 0.22);
+      }
+
+      .token-sheet-head {
+        border-bottom-color: rgba(255, 255, 255, 0.11);
+      }
+
+      .token-sheet-title,
+      .token-sheet-symbol,
+      .token-sheet-stat strong {
+        color: #ffffff;
+      }
+
+      .token-sheet-subtitle,
+      .token-sheet-name,
+      .token-sheet-description,
+      .token-sheet-stat span {
+        color: var(--muted);
+      }
+
+      .token-sheet-logo,
+      .token-sheet-stat {
+        border-color: rgba(255, 255, 255, 0.13);
+      }
+
+      .pill {
+        background: rgba(255, 141, 0, 0.18);
+        color: #ffb45a;
+      }
+
+      .pill.confirmed {
+        background: rgba(34, 197, 94, 0.16);
+        color: #7ee59d;
+      }
+
+      @media (max-width: 1120px) {
+        .workspace-grid,
+        .workspace-grid.active-tokens,
+        .workspace-grid.active-address,
+        .workspace-grid.active-utxo {
+          grid-template-columns: 1fr;
+        }
+
+        .panel {
+          min-height: auto;
+          opacity: 1;
+        }
+
+        .token-grid,
+        .list,
+        .utxo-result {
+          max-height: none;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .app {
+          padding: 18px 12px 28px;
+        }
+
+        .brand {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .brand-text {
+          border-left: 0;
+          padding-left: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div class="brand">
+          <img class="brand-logo" src="/bihelix-logo-texts.svg" alt="BiHelix" />
+          <div class="brand-text">
+            <h1>RGB 资产工作台</h1>
+            <div class="subtitle">查看 BiHelix RGB 资产、地址链上记录，并直接查询 UTXO 上的 RGB 资产</div>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button id="walletButton" class="wallet-button" type="button">连接 BTC 钱包</button>
+          <div class="status"><span id="healthDot" class="dot"></span><span id="healthText">连接中</span></div>
+        </div>
+      </header>
+
+      <div id="workspaceGrid" class="workspace-grid active-address">
+        <section class="panel" data-panel="tokens" aria-labelledby="tokenPanelTitle">
+          <div class="panel-head">
+            <div>
+              <h2 id="tokenPanelTitle" class="panel-title">1. RGB token list</h2>
+              <div class="panel-subtitle">BiHelix 所发行的 RGB 资产列表。</div>
+            </div>
+            <button class="panel-switch" type="button" data-activate="tokens" aria-label="展开 token-list">1</button>
+            <a class="wallet-button nav-button" href="/tokens">查看全部</a>
+          </div>
+          <div class="panel-body">
+            <div id="tokenNotice" class="notice">正在加载 RGB 资产列表...</div>
+            <div id="tokenList" class="token-grid"></div>
+            <div id="tokenEmpty" class="empty">暂无 token 数据</div>
+          </div>
+        </section>
+
+        <section class="panel" data-panel="address" aria-labelledby="addressPanelTitle">
+          <div class="panel-head">
+            <div>
+              <h2 id="addressPanelTitle" class="panel-title">2. 地址交易</h2>
+              <div class="panel-subtitle">从 mempool 查询最新链上操作，并标记参与 UTXO。</div>
+            </div>
+            <button class="panel-switch" type="button" data-activate="address" aria-label="展开地址交易">2</button>
+          </div>
+          <div class="panel-body">
+            <form id="queryForm" class="toolbar">
+              <div>
+                <label for="address">地址</label>
+                <input id="address" placeholder="输入 BTC 地址" autocomplete="off" />
+              </div>
+              <div>
+                <label for="network">网络</label>
+                <select id="network">
+                  <option value="mainnet" selected>mainnet</option>
+                  <option value="testnet">testnet</option>
+                  <option value="testnet4">testnet4</option>
+                  <option value="signet">signet</option>
+                </select>
+              </div>
+              <button id="submitButton" type="submit">查询记录</button>
+            </form>
+
+            <div id="notice" class="notice">输入地址后点击查询。</div>
+
+            <section class="summary" aria-label="查询摘要">
+              <div class="metric"><span>交易数</span><strong id="txCount">0</strong></div>
+              <div class="metric"><span>总收入</span><strong id="receivedTotal">0 sats</strong></div>
+              <div class="metric"><span>总支出</span><strong id="sentTotal">0 sats</strong></div>
+              <div class="metric"><span>未确认</span><strong id="unconfirmedCount">0</strong></div>
+            </section>
+
+            <section id="txList" class="list" aria-live="polite"></section>
+            <div id="empty" class="empty">暂无交易数据</div>
+          </div>
+        </section>
+
+        <section class="panel" data-panel="utxo" aria-labelledby="utxoPanelTitle">
+          <div class="panel-head">
+            <div>
+              <h2 id="utxoPanelTitle" class="panel-title">3. UTXO RGB</h2>
+              <div class="panel-subtitle">输入 txid:vout，直接查询该 UTXO 上的 RGB 资产。</div>
+            </div>
+            <button class="panel-switch" type="button" data-activate="utxo" aria-label="展开 UTXO 查询">3</button>
+          </div>
+          <div class="panel-body">
+            <form id="utxoForm" class="utxo-lookup">
+              <div>
+                <label for="utxoInput">UTXO</label>
+                <input id="utxoInput" placeholder="txid:vout" autocomplete="off" />
+              </div>
+              <button id="utxoButton" type="submit">查询 RGB 资产</button>
+            </form>
+            <div id="utxoNotice" class="notice">输入 UTXO 后点击查询。</div>
+            <div id="utxoResult" class="utxo-result"></div>
+          </div>
+        </section>
+      </div>
+
+      <div id="tokenSheet" class="token-sheet" hidden>
+        <button id="tokenSheetBackdrop" class="token-sheet-backdrop" type="button" aria-label="关闭 Token 详情"></button>
+        <section class="token-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="tokenSheetTitle">
+          <div class="token-sheet-grip"></div>
+          <div class="token-sheet-head">
+            <div>
+              <h2 id="tokenSheetTitle" class="token-sheet-title">Token 详情</h2>
+              <div id="tokenSheetSubtitle" class="token-sheet-subtitle"></div>
+            </div>
+            <button id="tokenSheetClose" class="token-sheet-close" type="button" aria-label="关闭">×</button>
+          </div>
+          <div id="tokenSheetBody" class="token-sheet-body"></div>
+        </section>
+      </div>
+
+      <div id="walletAuthDialog" class="token-sheet" hidden>
+        <button id="walletAuthBackdrop" class="token-sheet-backdrop" type="button" aria-label="取消钱包授权"></button>
+        <section class="token-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="walletAuthTitle">
+          <div class="token-sheet-grip"></div>
+          <div class="token-sheet-head">
+            <div>
+              <h2 id="walletAuthTitle" class="token-sheet-title">连接 BTC 钱包</h2>
+              <div id="walletAuthReason" class="token-sheet-subtitle"></div>
+            </div>
+          </div>
+          <div class="token-sheet-body">
+            <div class="wallet-auth-copy">该 UTXO 还没有公开查看记录，需要连接 BTC 钱包确认它属于你的地址。本地演示模式下，点击确认代表钱包已完成所有权确认；显示资产后你可以选择公开这个 UTXO。</div>
+            <div id="walletAuthUtxo" class="wallet-auth-utxo"></div>
+            <div class="wallet-auth-actions">
+              <button id="walletAuthCancel" class="wallet-button" type="button">取消</button>
+              <button id="walletAuthConfirm" type="button">确认授权</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const API_BASE = location.protocol === "file:" ? "http://127.0.0.1:8092" : "";
+      const form = document.getElementById("queryForm");
+      const address = document.getElementById("address");
+      const network = document.getElementById("network");
+      const button = document.getElementById("submitButton");
+      const notice = document.getElementById("notice");
+      const list = document.getElementById("txList");
+      const empty = document.getElementById("empty");
+      const txCount = document.getElementById("txCount");
+      const receivedTotal = document.getElementById("receivedTotal");
+      const sentTotal = document.getElementById("sentTotal");
+      const unconfirmedCount = document.getElementById("unconfirmedCount");
+      const healthDot = document.getElementById("healthDot");
+      const healthText = document.getElementById("healthText");
+      const walletButton = document.getElementById("walletButton");
+      const tokenNotice = document.getElementById("tokenNotice");
+      const tokenList = document.getElementById("tokenList");
+      const tokenEmpty = document.getElementById("tokenEmpty");
+      const utxoForm = document.getElementById("utxoForm");
+      const utxoInput = document.getElementById("utxoInput");
+      const utxoButton = document.getElementById("utxoButton");
+      const utxoNotice = document.getElementById("utxoNotice");
+      const utxoResult = document.getElementById("utxoResult");
+      const tokenSheet = document.getElementById("tokenSheet");
+      const tokenSheetTitle = document.getElementById("tokenSheetTitle");
+      const tokenSheetSubtitle = document.getElementById("tokenSheetSubtitle");
+      const tokenSheetBody = document.getElementById("tokenSheetBody");
+      const tokenSheetBackdrop = document.getElementById("tokenSheetBackdrop");
+      const tokenSheetClose = document.getElementById("tokenSheetClose");
+      const walletAuthDialog = document.getElementById("walletAuthDialog");
+      const walletAuthBackdrop = document.getElementById("walletAuthBackdrop");
+      const walletAuthReason = document.getElementById("walletAuthReason");
+      const walletAuthUtxo = document.getElementById("walletAuthUtxo");
+      const walletAuthCancel = document.getElementById("walletAuthCancel");
+      const walletAuthConfirm = document.getElementById("walletAuthConfirm");
+      const workspaceGrid = document.getElementById("workspaceGrid");
+      const panels = Array.from(document.querySelectorAll(".panel[data-panel]"));
+      const panelOrder = ["tokens", "address", "utxo"];
+
+      let connectedWallet = null;
+      let walletSubscribed = false;
+      let activePanel = "address";
+      let pendingWalletAuthorization = null;
+      const authorizedUtxos = new Set();
+      const ownerApprovedUtxos = new Set();
+      const publicUtxos = new Set();
+
+      function activatePanel(name) {
+        if (!panelOrder.includes(name)) return;
+        activePanel = name;
+        workspaceGrid.classList.remove("active-tokens", "active-address", "active-utxo");
+        workspaceGrid.classList.add(`active-${name}`);
+
+        const activeIndex = panelOrder.indexOf(name);
+        panels.forEach((panel) => {
+          const panelName = panel.dataset.panel;
+          const panelIndex = panelOrder.indexOf(panelName);
+          panel.classList.toggle("is-active", panelName === name);
+          panel.classList.toggle("is-inactive", panelName !== name);
+          panel.classList.toggle("is-left", panelIndex < activeIndex);
+          panel.classList.toggle("is-right", panelIndex > activeIndex);
+        });
+      }
+
+      async function checkHealth() {
+        try {
+          const response = await fetch(`${API_BASE}/api/health`);
+          const data = await response.json();
+          healthDot.classList.toggle("ok", Boolean(data.ok));
+          healthText.textContent = data.ok ? "本地服务可用" : "服务异常";
+        } catch (error) {
+          healthText.textContent = "服务未连接";
+        }
+      }
+
+      function shortAddress(value) {
+        const addressText = text(value);
+        if (addressText.length <= 14) return addressText;
+        return `${addressText.slice(0, 6)}...${addressText.slice(-6)}`;
+      }
+
+      function walletProviders() {
+        const providers = [];
+        if (window.wizz) {
+          providers.push({
+            name: "Wizz",
+            provider: window.wizz,
+            connect: async () => (await window.wizz.requestAccounts())?.[0] || "",
+          });
+        }
+        if (window.bitpocket?.unisat) {
+          providers.push({
+            name: "BitPocket",
+            provider: window.bitpocket.unisat,
+            connect: async () => {
+              if (window.bitpocket.unisat.getBiHelixAccounts) {
+                return (await window.bitpocket.unisat.getBiHelixAccounts())?.[0] || "";
+              }
+              return (await window.bitpocket.unisat.requestAccounts())?.[0] || "";
+            },
+          });
+        }
+        if (window.unisat) {
+          providers.push({
+            name: "UniSat",
+            provider: window.unisat,
+            connect: async () => (await window.unisat.requestAccounts())?.[0] || "",
+          });
+        }
+        if (window.okxwallet?.bitcoin) {
+          providers.push({
+            name: "OKX",
+            provider: window.okxwallet.bitcoin,
+            connect: async () => (await window.okxwallet.bitcoin.requestAccounts())?.[0] || "",
+          });
+        }
+        return providers;
+      }
+
+      function subscribeWallet(providerConfig) {
+        const provider = providerConfig.provider;
+        if (!provider || !provider.on || walletSubscribed) return;
+        walletSubscribed = true;
+
+        provider.on("accountsChanged", (accounts) => {
+          const nextAddress = Array.isArray(accounts) ? accounts[0] : "";
+          if (!nextAddress) return;
+          connectedWallet = { name: providerConfig.name, address: nextAddress };
+          address.value = nextAddress;
+          walletButton.textContent = `${providerConfig.name} ${shortAddress(nextAddress)}`;
+          setNotice(`已切换到 ${providerConfig.name} 地址，正在刷新记录...`);
+          form.requestSubmit();
+        });
+      }
+
+      async function connectWallet() {
+        const providers = walletProviders();
+        if (!providers.length) {
+          setNotice("未检测到 BTC 钱包插件。请安装或打开 Wizz、BitPocket、UniSat 或 OKX 钱包。", true);
+          return;
+        }
+
+        walletButton.disabled = true;
+        walletButton.textContent = "连接中...";
+        try {
+          const providerConfig = providers[0];
+          const walletAddress = await providerConfig.connect();
+          if (!walletAddress) throw new Error("钱包未返回地址");
+
+          connectedWallet = { name: providerConfig.name, address: walletAddress };
+          address.value = walletAddress;
+          walletButton.textContent = `${providerConfig.name} ${shortAddress(walletAddress)}`;
+          subscribeWallet(providerConfig);
+          setNotice(`已连接 ${providerConfig.name}，正在查询链上记录...`);
+          form.requestSubmit();
+        } catch (error) {
+          walletButton.textContent = connectedWallet
+            ? `${connectedWallet.name} ${shortAddress(connectedWallet.address)}`
+            : "连接 BTC 钱包";
+          setNotice(`钱包连接失败：${error.message || "用户取消或钱包不可用"}`, true);
+        } finally {
+          walletButton.disabled = false;
+        }
+      }
+
+      function setNotice(value, isError = false) {
+        notice.textContent = value;
+        notice.classList.toggle("error", isError);
+      }
+
+      function setUtxoNotice(value, isError = false) {
+        utxoNotice.textContent = value;
+        utxoNotice.classList.toggle("error", isError);
+      }
+
+      async function ensureUtxoAccess(utxo) {
+        if (authorizedUtxos.has(utxo)) return true;
+
+        const params = new URLSearchParams({ utxo });
+        try {
+          const response = await fetch(`${API_BASE}/api/utxo/access?${params}`);
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+          }
+          if (data.authorized) {
+            authorizedUtxos.add(utxo);
+            publicUtxos.add(utxo);
+            return true;
+          }
+
+          const reason = data.checked ? "该 UTXO 暂无授权记录。" : "暂未读取到授权记录。";
+          return requestMockWalletAuthorization(utxo, reason);
+        } catch (error) {
+          return requestMockWalletAuthorization(utxo, `授权状态检查失败：${error.message}`);
+        }
+      }
+
+      function requestMockWalletAuthorization(utxo, reason) {
+        if (pendingWalletAuthorization) {
+          pendingWalletAuthorization.resolve(false);
+          pendingWalletAuthorization = null;
+        }
+
+        walletAuthReason.textContent = reason;
+        walletAuthUtxo.textContent = utxo;
+        walletAuthDialog.hidden = false;
+
+        return new Promise((resolve) => {
+          pendingWalletAuthorization = { utxo, resolve };
+        });
+      }
+
+      function resolveWalletAuthorization(approved) {
+        if (!pendingWalletAuthorization) {
+          walletAuthDialog.hidden = true;
+          return;
+        }
+
+        const { utxo, resolve } = pendingWalletAuthorization;
+        pendingWalletAuthorization = null;
+        walletAuthDialog.hidden = true;
+
+        if (approved) {
+          authorizedUtxos.add(utxo);
+          ownerApprovedUtxos.add(utxo);
+          connectedWallet = connectedWallet || { name: "Mock Wallet", address: "authorized" };
+          walletButton.textContent = "钱包已授权";
+        }
+
+        resolve(approved);
+      }
+
+      function text(value) {
+        return String(value ?? "");
+      }
+
+      function formatSats(value) {
+        const sats = Number(value || 0);
+        return `${new Intl.NumberFormat("en-US").format(sats)} sats`;
+      }
+
+      function formatBtc(value) {
+        const sats = Number(value || 0);
+        return `${(sats / 100000000).toFixed(8)} BTC`;
+      }
+
+      function formatTime(blockTime) {
+        if (!blockTime) return "未确认";
+        return new Intl.DateTimeFormat("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).format(new Date(blockTime * 1000));
+      }
+
+      function mempoolTxUrl(txid) {
+        const prefix = {
+          mainnet: "",
+          testnet: "/testnet",
+          testnet4: "/testnet4",
+          signet: "/signet",
+        }[network.value] || "";
+        return `https://mempool.space${prefix}/tx/${txid}`;
+      }
+
+      async function loadTokens() {
+        tokenList.innerHTML = "";
+        tokenEmpty.style.display = "none";
+        tokenNotice.textContent = "正在加载 RGB 资产列表...";
+        tokenNotice.classList.remove("error");
+
+        try {
+          const response = await fetch(`${API_BASE}/api/tokens`);
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+          }
+
+          const tokens = Array.isArray(data.tokens) ? data.tokens : [];
+          tokenNotice.textContent = data.token_list_error
+            ? `RGB 资产列表加载失败：${data.token_list_error}`
+            : `共 ${tokens.length} 个 RGB 资产。`;
+          tokenNotice.classList.toggle("error", Boolean(data.token_list_error));
+          renderTokens(tokens);
+        } catch (error) {
+          tokenNotice.textContent = `RGB 资产列表读取失败：${error.message}`;
+          tokenNotice.classList.add("error");
+          renderTokens([]);
+        }
+      }
+
+      function renderTokens(tokens) {
+        tokenList.innerHTML = "";
+        tokenEmpty.style.display = tokens.length ? "none" : "block";
+        for (const token of tokens) {
+          tokenList.insertAdjacentHTML("beforeend", renderTokenCard(token));
+        }
+      }
+
+      function renderTokenCard(token) {
+        const symbol = token.ticker || "RGB";
+        const name = token.name || token.contract_id || "";
+        const logo = token.logo_url || "";
+        return `
+          <button class="token-card" type="button" data-contract="${escapeHtml(token.contract_id || "")}">
+            ${logo ? `<img class="token-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(symbol)}" />` : `<div class="token-logo">${escapeHtml(symbol.slice(0, 4))}</div>`}
+            <div>
+              <div class="token-symbol">${escapeHtml(symbol)}</div>
+              <div class="token-name">${escapeHtml(name)}</div>
+              <div class="token-meta">precision ${escapeHtml(token.precision ?? 0)} · supply ${escapeHtml(token.supply_display || "0")}</div>
+            </div>
+          </button>
+        `;
+      }
+
+      function closeTokenSheet() {
+        tokenSheet.hidden = true;
+        tokenSheetTitle.textContent = "Token 详情";
+        tokenSheetSubtitle.textContent = "";
+        tokenSheetBody.innerHTML = "";
+      }
+
+      async function openTokenSheet(contractId) {
+        const id = text(contractId).trim();
+        if (!id) return;
+
+        tokenSheet.hidden = false;
+        tokenSheetTitle.textContent = "Token 详情";
+        tokenSheetSubtitle.textContent = id;
+        tokenSheetBody.innerHTML = '<div class="notice">正在加载 Token 详情...</div>';
+
+        try {
+          const response = await fetch(`${API_BASE}/api/tokens/${encodeURIComponent(id)}`);
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+          }
+          renderTokenSheet(data.token);
+        } catch (error) {
+          tokenSheetBody.innerHTML = `<div class="notice error">Token 详情读取失败：${escapeHtml(error.message)}</div>`;
+        }
+      }
+
+      function renderTokenSheet(token) {
+        const symbol = token?.ticker || "RGB";
+        const name = token?.name || token?.contract_id || "";
+        const logo = token?.logo_url || "";
+        const description = token?.description || "";
+        const metadata = token?.metadata ?? token ?? {};
+        tokenSheetTitle.textContent = `${symbol} 详情`;
+        tokenSheetSubtitle.textContent = token?.contract_id || "";
+        tokenSheetBody.innerHTML = `
+          <div class="token-sheet-summary">
+            ${logo ? `<img class="token-sheet-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(symbol)}" />` : `<div class="token-sheet-logo">${escapeHtml(symbol.slice(0, 4))}</div>`}
+            <div>
+              <div class="token-sheet-symbol">${escapeHtml(symbol)}</div>
+              <div class="token-sheet-name">${escapeHtml(name)}</div>
+              ${description ? `<div class="token-sheet-description">${escapeHtml(description)}</div>` : ""}
+            </div>
+          </div>
+          <div class="token-sheet-stats">
+            <div class="token-sheet-stat"><span>precision</span><strong>${escapeHtml(token?.precision ?? 0)}</strong></div>
+            <div class="token-sheet-stat"><span>supply</span><strong>${escapeHtml(token?.supply_display || "0")}</strong></div>
+            <div class="token-sheet-stat"><span>contract</span><strong>${escapeHtml(token?.contract_id || "")}</strong></div>
+          </div>
+          ${renderJsonViewer(metadata)}
+        `;
+      }
+
+      function renderJsonViewer(value) {
+        return `
+          <section class="json-viewer" aria-label="Token metadata">
+            <div class="json-viewer-head">
+              <div class="json-viewer-title">Metadata</div>
+              <div class="json-viewer-badge">JSON</div>
+            </div>
+            <pre class="json-pretty">${syntaxHighlightJson(value)}</pre>
+          </section>
+        `;
+      }
+
+      function syntaxHighlightJson(value) {
+        const json = JSON.stringify(value ?? {}, null, 2);
+        return escapeHtml(json).replace(
+          /(&quot;(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\&])*?&quot;)(\s*:)?|\b(true|false)\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?/g,
+          (match, stringValue, colon, boolValue) => {
+            if (stringValue) {
+              const className = colon ? "json-key" : "json-string";
+              return `<span class="${className}">${stringValue}</span>${colon || ""}`;
+            }
+            if (boolValue) return `<span class="json-bool">${match}</span>`;
+            if (match === "null") return '<span class="json-null">null</span>';
+            return `<span class="json-number">${match}</span>`;
+          }
+        );
+      }
+
+      function renderTxs(txs) {
+        list.innerHTML = "";
+        empty.style.display = txs.length ? "none" : "block";
+        txCount.textContent = txs.length;
+
+        for (const tx of txs) {
+          const direction = tx.direction || "self";
+          const sign = tx.net > 0 ? "+" : tx.net < 0 ? "-" : "";
+          const item = document.createElement("article");
+          item.className = "tx";
+          item.innerHTML = `
+            <div class="tx-head">
+              <a class="txid" href="${mempoolTxUrl(tx.txid)}" target="_blank" rel="noreferrer">${escapeHtml(tx.txid)}</a>
+              <div class="amount ${direction}">${sign}${escapeHtml(formatSats(Math.abs(tx.net)))}</div>
+            </div>
+            <div class="meta">
+              <div class="tx-line">
+                <span>${escapeHtml(formatTime(tx.block_time))}</span>
+                <span class="pill ${tx.confirmed ? "confirmed" : ""}">${tx.confirmed ? "Confirmed" : "Unconfirmed"}</span>
+              </div>
+              <div class="tx-line">
+                <span>收入 ${escapeHtml(formatSats(tx.received))} · 支出 ${escapeHtml(formatSats(tx.sent))}</span>
+                <span>手续费 ${escapeHtml(formatSats(tx.fee))}</span>
+              </div>
+              <div class="tx-line">
+                <span>${escapeHtml(formatBtc(Math.abs(tx.net)))}</span>
+                <span>Inputs ${tx.inputs} · Outputs ${tx.outputs}${tx.block_height ? ` · Height ${tx.block_height}` : ""}</span>
+              </div>
+            </div>
+            <div class="utxo-groups">
+              ${renderUtxoGroup("花费的 UTXO", tx.input_utxos, "spent")}
+              ${renderUtxoGroup("收到的 UTXO", tx.output_utxos, "received")}
+            </div>
+          `;
+          list.appendChild(item);
+        }
+      }
+
+      function renderUtxoGroup(title, utxos, type) {
+        const items = Array.isArray(utxos) ? utxos : [];
+        if (!items.length) return "";
+        return `
+          <div class="utxo-group ${type}">
+            <div class="utxo-title">${escapeHtml(title)} · ${items.length}</div>
+            <div class="utxo-list">
+              ${items.map(renderUtxo).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderUtxo(utxo) {
+        return `
+          <div class="utxo">
+            <button class="utxo-action" type="button" data-utxo="${escapeHtml(utxo.outpoint)}">${escapeHtml(utxo.outpoint)}</button>
+            <div class="utxo-value">${escapeHtml(formatSats(utxo.value))}</div>
+            <div class="utxo-detail" hidden></div>
+          </div>
+        `;
+      }
+
+      async function loadUtxoDetail(action) {
+        const outpoint = action.dataset.utxo;
+        const row = action.closest(".utxo");
+        const detail = row?.querySelector(".utxo-detail");
+        if (!outpoint || !detail) return;
+
+        if (detail.dataset.loaded === "true") {
+          detail.hidden = !detail.hidden;
+          return;
+        }
+
+        if (!(await ensureUtxoAccess(outpoint))) {
+          detail.hidden = true;
+          return;
+        }
+
+        action.disabled = true;
+        detail.hidden = false;
+        detail.innerHTML = "正在从 BiHelix 节点查询 UTXO 资产详情...";
+
+        const params = new URLSearchParams({ utxo: outpoint });
+        try {
+          const response = await fetch(`${API_BASE}/api/utxo/assets?${params}`);
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+          }
+
+          detail.dataset.loaded = "true";
+          detail.innerHTML = renderUtxoDetail(data);
+        } catch (error) {
+          detail.innerHTML = `<span class="notice error">UTXO 详情查询失败：${escapeHtml(error.message)}</span>`;
+        } finally {
+          action.disabled = false;
+        }
+      }
+
+      function renderUtxoDetail(data) {
+        const assets = Array.isArray(data.assets) ? data.assets : [];
+        const assetHtml = assets.length
+          ? assets.map(renderAssetLine).join("")
+          : '<div class="empty">该 UTXO 暂未解析到 RGB 资产。</div>';
+        const publicAction = assets.length ? renderUtxoPublicAction(data.utxo) : "";
+        return `
+          <div>来源：${escapeHtml(data.upstream || "https://node.bihelix.io/v3")}</div>
+          ${data.token_list_error ? `<div class="notice error">RGB 资产信息加载失败：${escapeHtml(data.token_list_error)}</div>` : ""}
+          ${publicAction}
+          ${assetHtml}
+        `;
+      }
+
+      function renderUtxoPublicAction(utxo) {
+        const outpoint = text(utxo).trim();
+        if (!outpoint || publicUtxos.has(outpoint) || !ownerApprovedUtxos.has(outpoint)) {
+          return "";
+        }
+
+        return `
+          <div class="utxo-public-box" data-public-box="${escapeHtml(outpoint)}">
+            <div class="utxo-public-copy">钱包已确认你是该 UTXO 的所有者。公开后，其他人也可以直接查看这个 UTXO 上的 RGB 资产。</div>
+            <button class="utxo-public-button" type="button" data-public-utxo="${escapeHtml(outpoint)}">公开这个 UTXO</button>
+          </div>
+        `;
+      }
+
+      function renderAssetLine(asset) {
+        const sources = Array.isArray(asset.txids) && asset.txids.length ? asset.txids.join(", ") : "unknown source";
+        const metadata = asset.metadata ? JSON.stringify(asset.metadata) : "";
+        const symbol = asset.ticker || "RGB";
+        const name = asset.name || asset.metadata?.ext?.asset_name || asset.metadata?.name || "";
+        const logo = asset.logo_url || "";
+        return `
+          <div class="asset-line">
+            <div class="asset-main">
+              ${logo ? `<img class="asset-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(symbol)}" />` : `<div class="asset-logo"></div>`}
+              <div>
+                <div class="asset-symbol">${escapeHtml(symbol)}</div>
+                ${name ? `<div class="asset-name">${escapeHtml(name)}</div>` : ""}
+                ${asset.description ? `<div class="asset-description">${escapeHtml(asset.description)}</div>` : ""}
+              </div>
+            </div>
+            <div class="asset-amount">${escapeHtml(asset.display_amount || asset.raw_amount || "0")}</div>
+            <button class="asset-detail-button" type="button" data-contract="${escapeHtml(asset.contract_id || "")}">Token 详情</button>
+            <div class="asset-detail" hidden>
+              <div class="asset-contract">${escapeHtml(asset.contract_id || "unknown contract")}</div>
+              <div class="asset-from">from ${escapeHtml(sources)}</div>
+              ${asset.decimal ? `<div>precision ${escapeHtml(asset.decimal)}</div>` : ""}
+              ${asset.supply ? `<div>supply ${escapeHtml(asset.supply)}</div>` : ""}
+              ${metadata ? `<pre class="json-detail">${escapeHtml(metadata)}</pre>` : ""}
+            </div>
+          </div>
+        `;
+      }
+
+      function escapeHtml(value) {
+        return text(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        activatePanel("address");
+        const queryAddress = address.value.trim();
+        if (!queryAddress) {
+          setNotice("请输入地址。", true);
+          address.focus();
+          return;
+        }
+
+        button.disabled = true;
+        button.textContent = "查询中...";
+        setNotice("正在从 mempool 查询最新链上操作记录...");
+
+        const params = new URLSearchParams({
+          address: queryAddress,
+          network: network.value,
+        });
+
+        try {
+          const response = await fetch(`${API_BASE}/api/mempool/address?${params}`);
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+          }
+          const txs = data.txs || [];
+          renderTxs(txs);
+          receivedTotal.textContent = formatSats(data.received_total);
+          sentTotal.textContent = formatSats(data.sent_total);
+          unconfirmedCount.textContent = data.unconfirmed ?? 0;
+          setNotice(txs.length ? `已加载最新 ${txs.length} 条链上记录。` : "mempool 未返回该地址的链上记录。");
+        } catch (error) {
+          renderTxs([]);
+          receivedTotal.textContent = "0 sats";
+          sentTotal.textContent = "0 sats";
+          unconfirmedCount.textContent = "0";
+          setNotice(`查询失败：${error.message}`, true);
+        } finally {
+          button.disabled = false;
+          button.textContent = "查询记录";
+        }
+      });
+
+      utxoForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        activatePanel("utxo");
+        const utxo = utxoInput.value.trim();
+        if (!utxo) {
+          setUtxoNotice("请输入 UTXO，格式为 txid:vout。", true);
+          utxoInput.focus();
+          return;
+        }
+
+        utxoButton.disabled = true;
+        utxoButton.textContent = "检查授权...";
+        utxoResult.innerHTML = "";
+        setUtxoNotice("正在检查该 UTXO 的查看授权...");
+
+        const params = new URLSearchParams({ utxo });
+        try {
+          if (!(await ensureUtxoAccess(utxo))) {
+            setUtxoNotice("已取消钱包授权，未查询该 UTXO。", true);
+            return;
+          }
+
+          utxoButton.textContent = "查询中...";
+          setUtxoNotice("正在查询该 UTXO 上的 RGB 资产...");
+          const response = await fetch(`${API_BASE}/api/utxo/assets?${params}`);
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+          }
+          utxoResult.innerHTML = renderUtxoDetail(data);
+          setUtxoNotice(data.count ? `找到 ${data.count} 个 RGB 资产。` : "该 UTXO 未返回 RGB 资产。");
+        } catch (error) {
+          utxoResult.innerHTML = "";
+          setUtxoNotice(`UTXO 查询失败：${error.message}`, true);
+        } finally {
+          utxoButton.disabled = false;
+          utxoButton.textContent = "查询 RGB 资产";
+        }
+      });
+
+      function handleAssetDetailClick(event) {
+        const detailButton = event.target.closest(".asset-detail-button");
+        if (!detailButton) return false;
+        event.preventDefault();
+        event.stopPropagation();
+        openTokenSheet(detailButton.dataset.contract);
+        return true;
+      }
+
+      async function handlePublicUtxoClick(event) {
+        const publicButton = event.target.closest(".utxo-public-button");
+        if (!publicButton) return false;
+        event.preventDefault();
+        event.stopPropagation();
+
+        const utxo = publicButton.dataset.publicUtxo;
+        if (!utxo) return true;
+
+        publicButton.disabled = true;
+        publicButton.textContent = "公开中...";
+        try {
+          const response = await fetch(`${API_BASE}/api/utxo/public`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              utxo,
+              wallet: connectedWallet?.address || connectedWallet?.name || "mock-wallet",
+            }),
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+          }
+
+          publicUtxos.add(utxo);
+          authorizedUtxos.add(utxo);
+          const box = publicButton.closest(".utxo-public-box");
+          if (box) {
+            box.classList.add("is-public");
+            box.innerHTML = '<div class="utxo-public-copy">已公开，其他人可以直接查看这个 UTXO 上的 RGB 资产。</div>';
+          }
+          setUtxoNotice("UTXO 已公开，其他人可直接查看。");
+        } catch (error) {
+          publicButton.disabled = false;
+          publicButton.textContent = "公开这个 UTXO";
+          setUtxoNotice(`公开失败：${error.message}`, true);
+        }
+        return true;
+      }
+
+      tokenList.addEventListener("click", (event) => {
+        const tokenCard = event.target.closest(".token-card[data-contract]");
+        if (!tokenCard || !tokenList.contains(tokenCard)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        openTokenSheet(tokenCard.dataset.contract);
+      });
+
+      list.addEventListener("click", async (event) => {
+        if (await handlePublicUtxoClick(event)) {
+          return;
+        }
+        if (handleAssetDetailClick(event)) {
+          return;
+        }
+
+        const action = event.target.closest(".utxo-action");
+        if (!action || !list.contains(action)) return;
+        loadUtxoDetail(action);
+      });
+
+      utxoResult.addEventListener("click", async (event) => {
+        if (await handlePublicUtxoClick(event)) {
+          return;
+        }
+        handleAssetDetailClick(event);
+      });
+
+      tokenSheetBackdrop.addEventListener("click", closeTokenSheet);
+      tokenSheetClose.addEventListener("click", closeTokenSheet);
+      walletAuthBackdrop.addEventListener("click", () => resolveWalletAuthorization(false));
+      walletAuthCancel.addEventListener("click", () => resolveWalletAuthorization(false));
+      walletAuthConfirm.addEventListener("click", () => resolveWalletAuthorization(true));
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !walletAuthDialog.hidden) {
+          resolveWalletAuthorization(false);
+          return;
+        }
+        if (event.key === "Escape" && !tokenSheet.hidden) {
+          closeTokenSheet();
+        }
+      });
+
+      workspaceGrid.addEventListener("click", (event) => {
+        const switcher = event.target.closest("[data-activate]");
+        if (switcher && workspaceGrid.contains(switcher)) {
+          activatePanel(switcher.dataset.activate);
+          return;
+        }
+
+        const panel = event.target.closest(".panel[data-panel]");
+        if (!panel || !workspaceGrid.contains(panel)) return;
+        if (panel.dataset.panel === activePanel) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        activatePanel(panel.dataset.panel);
+      });
+
+      walletButton.addEventListener("click", connectWallet);
+      activatePanel("address");
+      checkHealth();
+      loadTokens();
+    </script>
+  </body>
+</html>
