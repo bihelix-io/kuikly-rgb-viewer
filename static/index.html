@@ -1630,6 +1630,15 @@
           });
         }
 
+        const okxProvider = window.okxwallet?.bitcoin || window.okxwallet?.btc;
+        if (okxProvider) {
+          providers.push({
+            name: "OKX",
+            provider: okxProvider,
+            connect: async () => firstAccount(okxProvider, ["requestAccounts", "getAccounts"]),
+          });
+        }
+
         return providers;
       }
 
@@ -1668,7 +1677,7 @@
       function openWalletConnectDialog() {
         const providers = walletProviders();
         if (!providers.length) {
-          walletConnectNotice.textContent = "未检测到 BitPocket 或 Wizz。请在钱包内置浏览器打开本 DApp，或安装对应浏览器插件。";
+          walletConnectNotice.textContent = "未检测到 BitPocket、Wizz 或 OKX。请在钱包内置浏览器打开本 DApp，或安装对应浏览器插件。";
           walletProviderList.innerHTML = "";
           walletConnectDialog.hidden = false;
           return;
@@ -1694,7 +1703,7 @@
         const providers = walletProviders();
         if (!providers.length) {
           if (!silent) {
-            setNotice("未检测到 BitPocket 或 Wizz。请在钱包内置浏览器打开本 DApp，或安装对应浏览器插件。", true);
+            setNotice("未检测到 BitPocket、Wizz 或 OKX。请在钱包内置浏览器打开本 DApp，或安装对应浏览器插件。", true);
           }
           return null;
         }
@@ -1740,6 +1749,7 @@
         const providerConfig =
           providers.find((provider) => provider.name === "BitPocket") ||
           providers.find((provider) => provider.name === "Wizz") ||
+          providers.find((provider) => provider.name === "OKX") ||
           providers[0];
         setNotice(`检测到 ${providerConfig.name} DApp 环境，正在自动连接...`);
         connectWallet(providerConfig.name, { silent: true }).then((wallet) => {
