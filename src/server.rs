@@ -1194,7 +1194,7 @@ fn render_tokens_page(state: &AppState) -> String {
         "RGB Token List",
         &format!(
             r#"<main class="page">
-                <nav><a href="/">地址记录</a></nav>
+                <nav><a href="./">地址记录</a></nav>
                 <section class="hero-list">
                   <div>
                     <div class="eyebrow">token-list</div>
@@ -1226,7 +1226,7 @@ fn render_token_page(token: &TokenMetadataView) -> String {
         &format!("{} · {}", token.ticker, display_name),
         &format!(
             r#"<main class="page">
-                <nav><a href="/">地址记录</a><a href="/tokens">Token List</a></nav>
+                <nav><a href="../">地址记录</a><a href="../tokens">Token List</a></nav>
                 <section class="hero-token">
                   {logo}
                   <div>
@@ -1264,7 +1264,7 @@ fn render_token_not_found_page(state: &AppState, contract_id: &str) -> String {
         "Token not found",
         &format!(
             r#"<main class="page">
-                <nav><a href="/">地址记录</a><a href="/tokens">Token List</a></nav>
+                <nav><a href="../">地址记录</a><a href="../tokens">Token List</a></nav>
                 <section class="json-panel">
                   <div class="panel-title">未找到 token</div>
                   <p>没有在启动时缓存的 token-list 中找到：</p>
@@ -1343,7 +1343,7 @@ fn render_token_logo(logo_url: &str, ticker: &str) -> String {
 }
 
 fn token_page_href(contract_id: &str) -> String {
-    format!("/token/{}", urlencoding::encode(contract_id))
+    format!("../token/{}", urlencoding::encode(contract_id))
 }
 
 fn html_escape(value: &str) -> String {

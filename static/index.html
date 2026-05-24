@@ -1353,7 +1353,7 @@
     <main class="app">
       <header class="topbar">
         <div class="brand">
-          <img class="brand-logo" src="/bihelix-logo-texts.svg" alt="BiHelix" />
+          <img class="brand-logo" src="bihelix-logo-texts.svg" alt="BiHelix" />
           <div class="brand-text">
             <h1>RGB 资产工作台</h1>
             <div class="subtitle">查看 BiHelix RGB 资产、地址链上记录，并直接查询 UTXO 上的 RGB 资产</div>
@@ -1373,7 +1373,7 @@
               <div class="panel-subtitle">BiHelix 所发行的 RGB 资产列表。</div>
             </div>
             <button class="panel-switch" type="button" data-activate="tokens" aria-label="展开 token-list">1</button>
-            <a class="wallet-button nav-button" href="/tokens">查看全部</a>
+            <a id="tokensLink" class="wallet-button nav-button" href="tokens">查看全部</a>
           </div>
           <div class="panel-body">
             <div id="tokenNotice" class="notice">正在加载 RGB 资产列表...</div>
@@ -1500,7 +1500,10 @@
     </main>
 
     <script>
-      const API_BASE = location.protocol === "file:" ? "http://127.0.0.1:8092" : "";
+      const APP_BASE = location.protocol === "file:"
+        ? ""
+        : (location.pathname === "/rgb" || location.pathname.startsWith("/rgb/") ? "/rgb" : "");
+      const API_BASE = location.protocol === "file:" ? "http://127.0.0.1:8092" : APP_BASE;
       const form = document.getElementById("queryForm");
       const address = document.getElementById("address");
       const network = document.getElementById("network");
@@ -1518,6 +1521,8 @@
       const tokenNotice = document.getElementById("tokenNotice");
       const tokenList = document.getElementById("tokenList");
       const tokenEmpty = document.getElementById("tokenEmpty");
+      const tokensLink = document.getElementById("tokensLink");
+      tokensLink.setAttribute("href", `${APP_BASE}/tokens`);
       const utxoForm = document.getElementById("utxoForm");
       const utxoInput = document.getElementById("utxoInput");
       const utxoButton = document.getElementById("utxoButton");
