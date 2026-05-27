@@ -1,119 +1,117 @@
-# BTC Address Activity Viewer
+# RGB 资产工作台用户手册
 
-一个带本地 server 和静态前端的 BTC 地址链上操作记录查看器，同时保留 Kuikly/KMP RGB 页面源码。
+RGB 资产工作台是一个面向 BTC 与 RGB 资产用户的 DApp。你可以用它查询任意 BTC 地址的链上交易记录，并在满足权限条件时查看 UTXO 上关联的 RGB 资产信息。
 
-## DApp 使用说明
+线上入口：
 
-本 DApp 用于查询任意 BTC 地址的链上交易记录，并查看 UTXO 上关联的 RGB 资产信息。
-
-为了避免对 mempool 服务产生过于频繁的请求，查询 BTC 交易记录前需要先连接 BTC 钱包。连接钱包后，用户可以输入任意 BTC 地址进行查询，查看该地址的收入、支出、手续费、确认状态以及相关 UTXO。
-
-对于某个 UTXO，如果服务端能够解析到 RGB 资产信息，用户可以进一步查看该 UTXO 上的 RGB 资产详情。
-
-未公开的 UTXO 默认不可被任何人直接查看 RGB 资产信息。只有该 UTXO 所属地址的钱包持有人，才可以通过钱包签名证明所有权，并选择将该 UTXO 公开。公开后，其他用户即可直接查看该 UTXO 上的 RGB 资产信息。
-
-签名仅用于证明地址控制权，不会发起链上交易，也不会转移任何资产。
+```text
+https://rgb-view.iftas.tech/
+```
 
 ![RGB 资产工作台 DApp 界面截图](docs/rgb-viewer-dapp.png)
 
-## 本地 Server 与前端
+## 可以做什么
 
-参考 `jp` 的本地服务形态，根目录提供一个 Rust/axum server：
+1. 查询任意 BTC 地址的链上交易记录。
+2. 查看交易中的输入、输出和相关 UTXO。
+3. 查询某个 UTXO 上是否存在 RGB 资产。
+4. 通过钱包签名证明 UTXO 所有权。
+5. 将自己拥有的 UTXO 公开，让其他人也能查看其 RGB 资产信息。
 
-```bash
-cargo run
-```
+## 连接钱包
 
-默认监听：
+进入 DApp 后，请先连接 BTC 钱包。当前支持：
 
-```text
-http://127.0.0.1:8092
-```
+- BitPocket
+- Wizz
+- OKX
 
-可用环境变量修改监听地址：
+在钱包内置 DApp 浏览器中打开时，页面会自动检测钱包环境并尝试连接。你也可以点击页面顶部的“连接 BTC 钱包”手动连接。
 
-```bash
-RGB_VIEWER_ADDR=0.0.0.0:8092 cargo run
-```
+连接钱包的目的：
 
-server 启动时会拉取一次 token-list 并缓存在内存里，默认来源：
+- 获取你的 BTC 钱包地址。
+- 降低对 mempool 查询服务的频繁请求。
+- 在需要查看未公开 UTXO 的 RGB 信息时，用签名证明你拥有该地址。
 
-```text
-https://node.bihelix.io/v3/asset/list
-```
+连接钱包不会发起链上交易，也不会转移资产。
 
-可用环境变量切换来源：
+## 查询 BTC 交易记录
 
-```bash
-TOKEN_LIST_BASE_URL=https://your-token-list-host cargo run
-```
+连接钱包后，你可以在“地址”栏目输入任意 BTC 地址进行查询。
 
-接口：
+查询结果会展示：
 
-```text
-GET /api/health
-GET /api/mempool/address?address=<btc-address>&network=testnet4
-GET /api/utxo/assets?utxo=<txid:vout>
-GET /api/tokens
-GET /api/tokens/<contract_id>
-GET /api/rgb/assets?address=<address>&base_url=https://node-testnet.bihelix.io
-```
+- 交易数量
+- 总收入
+- 总支出
+- 未确认交易数量
+- 每笔交易的确认状态、手续费、输入和输出 UTXO
 
-前端文件在 `static/index.html`，server 会直接托管根路径 `/`。首页分三块：
+注意：你可以查询任意 BTC 地址，不限于当前连接钱包的地址。
 
-1. RGB token-list：展示启动时缓存的全部 token，点击进入独立详情页。
-2. 地址交易查询：输入 BTC 地址后，从 mempool.space 拉取最新链上交易，按时间倒排展示收入、支出、净变化、手续费、确认状态和参与 UTXO。
-3. UTXO RGB 查询：直接输入 `txid:vout`，查询该 UTXO 上的 RGB 资产。
+## 查看 UTXO 上的 RGB 资产
 
-Token 页面：
+在交易记录中，你可以点击相关 UTXO 查看详情。也可以在“UTXO”栏目中直接输入：
 
 ```text
-GET /tokens
-GET /token/<contract_id>
+txid:vout
 ```
 
-UTXO 详情会用启动时缓存的 token-list 给 RGB 资产补充 ticker、名称、图标、描述、精度和合约详情。
+如果该 UTXO 已公开，任何用户都可以直接查看它上面的 RGB 资产信息。
 
-页面右上角提供“连接 BTC 钱包”，当前支持 BitPocket、Wizz 和 OKX。连接成功后会自动把钱包地址填入地址输入框并查询链上记录。在钱包内置 DApp 浏览器打开时，页面会检测注入的 provider 并自动尝试连接一次。
+如果该 UTXO 未公开，则需要该 UTXO 所属地址的钱包持有人进行签名授权后才能查看。
 
-## Kuikly 页面
+## 公开 UTXO
 
-`shared/` 下是独立的 Kuikly/KMP RGB 资产查看器页面。页面允许输入 BiHelix 钱包服务地址和 BTC/RGB 地址，并请求：
+未公开的 UTXO 默认不可被其他人直接查看 RGB 资产信息。
 
-```text
-GET {baseUrl}/v3/asset?address={address}
-```
+只有该 UTXO 所属地址的钱包持有人，才有权公开这个 UTXO。公开流程如下：
 
-默认服务地址为 `https://node-testnet.bihelix.io`，响应结构兼容现有 `ln-transfer` 中的 Layer1 RGB 资产接口：
+1. 连接拥有该 UTXO 的 BTC 钱包。
+2. 点击查看该 UTXO 的 RGB 信息。
+3. 钱包会弹出签名请求。
+4. 签名通过后，你可以查看该 UTXO 上的 RGB 资产。
+5. 如果你愿意让其他人也能查看，可以点击“公开这个 UTXO”。
 
-```json
-{
-  "txid": [
-    {
-      "contract_id": "rgb:...",
-      "ticker": "RNA",
-      "rgb_amount": 100000000,
-      "address": "bc1...",
-      "status": "Confirmed",
-      "decimal": 8,
-      "txid": "..."
-    }
-  ]
-}
-```
+公开后，其他用户无需再次签名，也可以直接查看该 UTXO 上的 RGB 资产信息。
 
-页面入口为：
+## 签名说明
 
-```text
-RgbAssetViewerPage
-```
+签名只用于证明你控制某个 BTC 地址。
 
-## 构建
+签名内容会绑定：
 
-本机需要 JDK 17、Android SDK，以及 Gradle 或项目 Gradle Wrapper。常用命令：
+- 当前 DApp
+- 当前 BTC 地址
+- 当前 UTXO
+- 查看 RGB 资产的授权用途
 
-```bash
-gradle :shared:compileDebugKotlinAndroid
-```
+签名不会：
 
-如果接入已有 Kuikly 宿主工程，可以直接复制 `shared/src/commonMain/kotlin/io/bihelix/rgbviewer` 下的页面和查询逻辑，并在宿主路由中打开 `RgbAssetViewerPage`。
+- 发起链上交易
+- 转移 BTC
+- 转移 RGB 资产
+- 授权他人花费你的资产
+
+## 常见问题
+
+**为什么查询 BTC 交易记录前需要连接钱包？**
+
+为了避免对 mempool 服务产生过于频繁的请求，DApp 要求先连接钱包再查询地址交易记录。
+
+**我可以查询别人的 BTC 地址吗？**
+
+可以。连接钱包后，你可以输入任意 BTC 地址查询其公开链上交易记录。
+
+**为什么有些 UTXO 不能直接查看 RGB 信息？**
+
+因为该 UTXO 还没有被公开。只有 UTXO 所属地址的钱包持有人可以通过签名证明所有权并选择公开。
+
+**公开 UTXO 后可以撤回吗？**
+
+当前公开操作会把该 UTXO 的查看权限记录到服务端。公开前请确认你愿意让其他人查看该 UTXO 上的 RGB 资产信息。
+
+**签名安全吗？**
+
+签名仅用于证明地址控制权，不会产生链上交易，也不会转移任何资产。请在钱包中确认签名内容与当前 UTXO 和地址一致。
