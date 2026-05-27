@@ -173,6 +173,23 @@
         font-weight: 750;
       }
 
+      .help-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 150px;
+        height: 50px;
+        border: 1px solid rgba(255, 141, 0, 0.55);
+        border-radius: 8px;
+        padding: 0 22px;
+        background: linear-gradient(90deg, #f58415 0%, #9f3acf 100%);
+        color: #0b0a0c;
+        font-size: 16px;
+        font-weight: 950;
+        text-decoration: none;
+        box-shadow: 0 12px 34px rgba(255, 141, 0, 0.22);
+      }
+
       button:disabled {
         background: #8a93a5;
         cursor: wait;
@@ -1437,6 +1454,7 @@
           </div>
         </div>
         <div class="top-actions">
+          <a class="help-button" href="/help">用户手册</a>
           <button id="walletButton" class="wallet-button" type="button">连接 BTC 钱包</button>
           <div class="status"><span id="healthDot" class="dot"></span><span id="healthText">连接中</span></div>
         </div>
